@@ -24,3 +24,15 @@
 - [x] **TASK-14:** Implement Speech-To-Text (STT) panel with editable transcripts and reviewed ISL video library playback (`SpeechToSignPanel.tsx`, `ISLVideoPlayer.tsx`, `scripts/generate_isl_video_clips.py`).
 - [x] **TASK-15:** Run end-to-end verification and compile actual test outputs in `TESTING.md`.
 - [x] **TASK-16:** Update `README.md` and `CHANGELOG.md` with usage instructions, limitations, and changelog.
+- [x] **TASK-17:** Audit duplicate camera controls ("Start Webcam" vs "Start Camera") and trace event handlers to root cause.
+- [x] **TASK-18:** Consolidate camera controls into single synchronized state machine (`idle`, `initializing`, `no_hand`, `detecting`, `recognized`, `uncertain`, `unavailable`) with explicit loading spinner.
+- [x] **TASK-19:** Implement `inFlightRef` network lock preventing concurrent overlapping `/v1/predict` requests.
+- [x] **TASK-20:** Ensure camera stream track disposal on stop and unmount to prevent resource leaks.
+- [x] **TASK-21:** Implement 4-frame temporal stability voting window to eliminate prediction flicker.
+- [x] **TASK-22:** Implement duplicate suppression lock requiring 5 consecutive stable cycles (~600ms hold) before auto-appending, preventing repeated letter spam while holding an ISL gesture.
+- [x] **TASK-23:** Inspect reference implementation (Warlord-06/teamname-vellosta) and generate integration map across components.
+- [x] **TASK-24:** Adapt anatomical finger landmark coloring, glowing joints, and bounding box pills (`drawLandmarks.ts`, `WebcamLandmarksCanvas.tsx`).
+- [x] **TASK-25:** Add mirror view toggle and skeleton overlay toggle controls to webcam toolbar (`WebcamLandmarksCanvas.tsx`).
+- [x] **TASK-26:** Implement client-side geometric hand analyzer and conversational heuristic detection (`gestureClassifier.ts`), maintaining strict separation from trained ISL model.
+- [x] **TASK-27:** Integrate Voice Controls drawer into `SentenceBuilder.tsx` and step-by-step Motion Guide tabs into `ISLVideoPlayer.tsx`.
+

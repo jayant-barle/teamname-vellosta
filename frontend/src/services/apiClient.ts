@@ -41,6 +41,12 @@ export interface HealthResponse {
   confidence_threshold: number;
 }
 
+export interface PhraseStep {
+  step: number;
+  title: string;
+  detail: string;
+}
+
 export interface PhraseItem {
   id: string;
   phrase: string;
@@ -50,6 +56,9 @@ export interface PhraseItem {
   video_url: string;
   sample_image?: string;
   tags: string[];
+  handshape?: string;
+  steps?: PhraseStep[];
+  linguistic_notes?: string;
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';

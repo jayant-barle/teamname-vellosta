@@ -4,6 +4,50 @@ All notable changes to the SignBridge project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3] - 2026-10-23
+
+### Added & Integrated (Selective Integration from Warlord-06/teamname-vellosta)
+- **Anatomical Finger Landmark Skeleton Visualization (`drawLandmarks.ts`, `WebcamLandmarksCanvas.tsx`):**
+  - Integrated anatomical color-coded skeleton rendering (Indigo palm, Amber thumb, Sky index, Emerald middle, Violet ring, Pink pinky, Gold fingertips, and glowing shadow blur).
+  - Added dashed bounding box calculation with hand identity tags and real-time inference confidence readouts.
+- **Camera Viewport Toggles (`WebcamLandmarksCanvas.tsx`):**
+  - Integrated Mirror View toggle button allowing users to flip or unflip video capture and canvas overlay.
+  - Integrated Skeleton Overlay toggle button enabling/disabling landmark skeleton rendering.
+- **Client-Side Conversational Gesture Heuristics (`gestureClassifier.ts`):**
+  - Integrated `analyzeHandGeometry` (finger extensions, thumb direction, finger closeness) to detect common conversational cues (Yes/Thumbs-Up, Peace/V-sign, Hello/Open-Palm, Thank-You, Help-Me).
+  - Maintained strict architectural separation: our local Python scikit-learn Random Forest model (`/v1/predict`) remains the primary ground-truth recognizer for ISL alphabets/digits (36 classes); heuristics are clearly badged as `method: 'geometric-heuristic'` and never overwrite or corrupt ISL predictions.
+- **Enhanced Voice & Speech Synthesis Controls (`SentenceBuilder.tsx`, `useSpeechSynthesis.ts`):**
+  - Added expandable Voice Settings Drawer with browser voice picker, speech rate range slider (`0.7x` to `1.3x`), and an "Auto-speak confirmed signs" toggle.
+- **Step-by-Step ISL Motion Guides & Cultural Notes (`isl_phrases.json`, `ISLVideoPlayer.tsx`):**
+  - Enriched the authentic ISL phrase dictionary with specific handshape postures, numbered motion breakdown steps, and cultural linguistic notes.
+  - Added a dedicated "Motion Guide" tab in `ISLVideoPlayer.tsx` allowing users to study hand movement steps alongside authentic video clips.
+  - Integrated a clean missing-video fallback notice upholding the strict zero-hallucination policy.
+- **Quality & Parity:**
+  - 100% of automated tests passing (27/27).
+  - Linter: 0 warnings, 0 errors across 14 files.
+  - Production build: Vite + TypeScript compiled in 3.26s.
+
+## [0.1.2] - 2026-10-23
+
+### Fixed & Completed (Phase 1 — Real-Time Webcam ISL Recognition)
+- **Consolidated Duplicate Camera Controls (`WebcamLandmarksCanvas.tsx`):**
+  - Resolved root cause of confusion between duplicate "Start Webcam" and "Start Camera" buttons: both triggered `startCamera()`, but had divergent visual states and lacked a loading indicator during permission acquisition.
+  - Unified the controls into a single synchronized state machine (`idle`, `initializing`, `no_hand`, `detecting`, `recognized`, `uncertain`, `unavailable`).
+  - Added an interactive `Initializing Camera...` spinner state that disables controls during device initialization and permission prompts.
+  - Added clean resource teardown on unmount and stop (`stream.getTracks().forEach(t => t.stop())`) preventing stream leaks.
+- **Network & Prediction Reliability:**
+  - Added an `inFlightRef` mutex lock ensuring in-flight `/v1/predict` HTTP requests complete before another is dispatched, completely preventing request stacking and race conditions.
+  - Throttled empty prediction notifications to dispatch only on state transitions from hands detected to no hands, avoiding network flooding when the camera view is empty.
+  - Implemented 4-frame temporal stability voting window in `App.tsx`, eliminating prediction flicker.
+  - Implemented duplicate suppression hold lock (5 consecutive stable frames / ~600ms hold requirement) to prevent continuous letter duplication while the signer maintains an ISL posture.
+- **Enhanced Status & Visual Feedback (`PredictionCard.tsx`, `WebcamLandmarksCanvas.tsx`):**
+  - Real-time status indicators communicating `Initializing Camera...`, `Detecting Hand...`, `Recognized Sign`, `No Hand Detected`, `Uncertain Sign`, and `Recognition Unavailable`.
+  - Added a `Stable` badge on `PredictionCard` when a gesture passes temporal consistency checks.
+- **Code Quality:**
+  - Resolved all oxlint linter warnings (0 errors, 0 warnings).
+  - Production build compiled cleanly in 1.17s.
+  - 100% of automated tests passing (27/27).
+
 ## [0.1.1] - 2026-10-23
 
 ### Added

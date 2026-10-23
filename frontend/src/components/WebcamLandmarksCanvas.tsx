@@ -4,6 +4,8 @@ import {
   CameraOff,
   AlertCircle,
   Eye,
+  EyeOff,
+  FlipHorizontal,
   Sliders,
   Sparkles,
   RefreshCw,
@@ -13,44 +15,42 @@ import {
   DEMO_GESTURES,
 } from '../services/apiClient';
 import type { LandmarkPoint, PredictResponse, DemoGesture } from '../services/apiClient';
+import type { CameraStatus } from './PredictionCard';
+import { renderHandsOnCanvas } from '../utils/drawLandmarks';
+import { classifyConversationalHeuristic } from '../services/gestureClassifier';
 
 interface WebcamLandmarksCanvasProps {
   onPredict: (features: number[], landmarks: LandmarkPoint[][]) => Promise<PredictResponse | null>;
   isPredicting: boolean;
   predictionResult: PredictResponse | null;
+  onStatusChange?: (status: CameraStatus) => void;
+  onHeuristicGesture?: (gestureName: string | null) => void;
 }
-
-// MediaPipe 21 Hand Connections
-const HAND_CONNECTIONS: [number, number][] = [
-  // Thumb
-  [0, 1], [1, 2], [2, 3], [3, 4],
-  // Index
-  [0, 5], [5, 6], [6, 7], [7, 8],
-  // Middle
-  [9, 10], [10, 11], [11, 12],
-  // Ring
-  [13, 14], [14, 15], [15, 16],
-  // Pinky
-  [0, 17], [17, 18], [18, 19], [19, 20],
-  // Palm Base
-  [5, 9], [9, 13], [13, 17],
-];
 
 export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   onPredict,
   isPredicting,
   predictionResult,
+  onStatusChange,
+  onHeuristicGesture,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [cameraActive, setCameraActive] = useState<boolean>(false);
+  const [isInitializing, setIsInitializing] = useState<boolean>(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [detectedHands, setDetectedHands] = useState<number>(0);
   const [fps, setFps] = useState<number>(0);
   const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [activeDemoGesture, setActiveDemoGesture] = useState<string | null>(null);
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
+
+  // Display toggles adapted from reference implementation
+  const [isMirrored, setIsMirrored] = useState<boolean>(true);
+  const [showSkeleton, setShowSkeleton] = useState<boolean>(true);
+  const [heuristicGesture, setHeuristicGesture] = useState<string | null>(null);
 
   const landmarkerRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
@@ -58,6 +58,19 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   const frameCountRef = useRef<number>(0);
   const lastFpsTimeRef = useRef<number>(0);
   const processFrameRef = useRef<() => void>(() => {});
+  const inFlightRef = useRef<boolean>(false);
+  const hadHandsRef = useRef<boolean>(false);
+
+  // Helper to propagate status
+  const updateStatus = useCallback(
+    (newStatus: CameraStatus) => {
+      setCameraStatus(newStatus);
+      if (onStatusChange) {
+        onStatusChange(newStatus);
+      }
+    },
+    [onStatusChange]
+  );
 
   // Enumerate camera devices
   useEffect(() => {
@@ -78,9 +91,10 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     loadDevices();
   }, [selectedDeviceId]);
 
-  // Initialize MediaPipe HandLandmarker with graceful fallback
+  // Initialize MediaPipe HandLandmarker WebAssembly engine
   useEffect(() => {
     let isMounted = true;
+
     async function initDetector() {
       try {
         const { HandLandmarker, FilesetResolver } = await import('@mediapipe/tasks-vision');
@@ -103,7 +117,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
           landmarkerRef.current = landmarker;
         }
       } catch (err) {
-        console.warn('Online MediaPipe model init fallback (offline or blocked CDN):', err);
+        console.warn('MediaPipe online model init notice:', err);
       }
     }
 
@@ -120,15 +134,52 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     };
   }, []);
 
+  // Stop Camera & Release Resources
+  const stopCamera = useCallback(() => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // Ignore stop errors
+        }
+      });
+      videoRef.current.srcObject = null;
+    }
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    setCameraActive(false);
+    setIsInitializing(false);
+    setDetectedHands(0);
+    hadHandsRef.current = false;
+    inFlightRef.current = false;
+    setHeuristicGesture(null);
+    if (onHeuristicGesture) onHeuristicGesture(null);
+    updateStatus('idle');
+  }, [updateStatus, onHeuristicGesture]);
+
+  // Component unmount cleanup: unconditionally release hardware stream
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
   // Start Camera
   const startCamera = async (deviceId?: string) => {
     setPermissionError(null);
     setActiveDemoGesture(null);
+    setIsInitializing(true);
+    updateStatus('initializing');
 
     // Stop current stream if switching devices
     if (videoRef.current?.srcObject) {
       const currentStream = videoRef.current.srcObject as MediaStream;
       currentStream.getTracks().forEach((t) => t.stop());
+      videoRef.current.srcObject = null;
     }
 
     try {
@@ -147,84 +198,33 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play();
-          setCameraActive(true);
+          videoRef.current?.play().then(() => {
+            setCameraActive(true);
+            setIsInitializing(false);
+            updateStatus('no_hand');
+          }).catch(() => {
+            setCameraActive(true);
+            setIsInitializing(false);
+            updateStatus('no_hand');
+          });
         };
       }
     } catch (err: any) {
-      console.error('Camera permission error:', err);
+      console.error('Camera initialization error:', err);
+      setIsInitializing(false);
+      setCameraActive(false);
+      updateStatus('unavailable');
+
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setPermissionError('Camera access denied. Please grant camera permission in your browser.');
+        setPermissionError('Camera access denied. Please grant camera permission in your browser address bar.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        setPermissionError('No camera detected on this system.');
+        setPermissionError('No camera detected on this system. Connect a webcam or test with Demo Gestures.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setPermissionError('Camera is already in use by another application. Please close other camera apps and retry.');
       } else {
         setPermissionError(`Camera error: ${err.message || 'Unable to open camera.'}`);
       }
-      setCameraActive(false);
     }
-  };
-
-  // Stop Camera
-  const stopCamera = () => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => track.stop());
-      videoRef.current.srcObject = null;
-    }
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-    setCameraActive(false);
-    setDetectedHands(0);
-  };
-
-  // Render Skeleton Connections on Canvas
-  const drawLandmarks = (
-    ctx: CanvasRenderingContext2D,
-    hands: LandmarkPoint[][],
-    width: number,
-    height: number
-  ) => {
-    ctx.save();
-
-    hands.forEach((hand, handIdx) => {
-      const isSecondHand = handIdx === 1;
-      const pointColor = isSecondHand ? '#10b981' : '#06b6d4';
-      const lineColor = isSecondHand ? 'rgba(16, 185, 129, 0.7)' : 'rgba(6, 182, 212, 0.7)';
-
-      // Draw connections
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = lineColor;
-      HAND_CONNECTIONS.forEach(([startIdx, endIdx]) => {
-        const p1 = hand[startIdx];
-        const p2 = hand[endIdx];
-        if (p1 && p2) {
-          ctx.beginPath();
-          ctx.moveTo(p1.x * width, p1.y * height);
-          ctx.lineTo(p2.x * width, p2.y * height);
-          ctx.stroke();
-        }
-      });
-
-      // Draw keypoints
-      hand.forEach((p, idx) => {
-        const x = p.x * width;
-        const y = p.y * height;
-        const isTip = [4, 8, 12, 16, 20].includes(idx);
-        const radius = isTip ? 6 : 4;
-
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, 2 * Math.PI);
-        ctx.fillStyle = isTip ? '#ffffff' : pointColor;
-        ctx.shadowColor = pointColor;
-        ctx.shadowBlur = 8;
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      });
-    });
-
-    ctx.restore();
   };
 
   // Frame processing loop
@@ -244,16 +244,20 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       canvas.height = video.videoHeight || 480;
     }
 
-    // Mirror video on canvas for intuitive signing UX
-    ctx.save();
-    ctx.scale(-1, 1);
-    ctx.translate(-canvas.width, 0);
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.restore();
+    // Render video on canvas with optional mirror toggle
+    if (isMirrored) {
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.translate(-canvas.width, 0);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.restore();
+    } else {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    }
 
     // FPS calculation using animation frame timestamp
     frameCountRef.current++;
-    const now = typeof document !== 'undefined' ? (document.timeline?.currentTime as number || 0) : 0;
+    const now = typeof document !== 'undefined' ? (document.timeline?.currentTime as number || performance.now()) : performance.now();
     if (lastFpsTimeRef.current === 0) {
       lastFpsTimeRef.current = now;
     } else if (now - lastFpsTimeRef.current >= 1000) {
@@ -269,10 +273,10 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       try {
         const results = landmarkerRef.current.detectForVideo(video, now);
         if (results?.landmarks && results.landmarks.length > 0) {
-          // Flip landmark X to match mirrored canvas view
+          // Adjust X coordinate based on mirror setting
           extractedHands = results.landmarks.map((hand: any[]) =>
             hand.map((p) => ({
-              x: 1.0 - p.x,
+              x: isMirrored ? 1.0 - p.x : p.x,
               y: p.y,
               z: p.z || 0.0,
             }))
@@ -283,26 +287,75 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       }
     }
 
-    setDetectedHands(extractedHands.length);
+    const handCount = extractedHands.length;
+    setDetectedHands(handCount);
 
-    // Draw overlay skeleton
-    if (extractedHands.length > 0) {
-      drawLandmarks(ctx, extractedHands, canvas.width, canvas.height);
+    // Evaluate client-side conversational heuristic (adapted from reference)
+    if (handCount > 0) {
+      const heuristic = classifyConversationalHeuristic(extractedHands[0], extractedHands);
+      const hName = heuristic?.name || null;
+      setHeuristicGesture(hName);
+      if (onHeuristicGesture) onHeuristicGesture(hName);
+    } else {
+      setHeuristicGesture(null);
+      if (onHeuristicGesture) onHeuristicGesture(null);
     }
 
-    // Throttled prediction loop (every 120ms ~ 8 FPS)
-    if (now - lastInferenceTimeRef.current > 120 && !isPredicting) {
-      lastInferenceTimeRef.current = now;
-      if (extractedHands.length > 0) {
+    // Draw anatomical skeleton & bounding box using adapted utility
+    if (handCount > 0 && showSkeleton) {
+      renderHandsOnCanvas(ctx, extractedHands, canvas.width, canvas.height, {
+        showSkeleton: true,
+        showBoundingBox: true,
+        activeLabel:
+          predictionResult?.status === 'recognized'
+            ? predictionResult.label
+            : heuristicGesture
+            ? `Heuristic: ${heuristicGesture}`
+            : undefined,
+        confidence: predictionResult?.confidence ?? undefined,
+        mirrored: isMirrored,
+      });
+    }
+
+    // Throttled prediction loop (every 120ms ~ 8 FPS) with in-flight and parent state lock
+    if (now - lastInferenceTimeRef.current > 120 && !inFlightRef.current && !isPredicting) {
+      if (handCount > 0) {
+        hadHandsRef.current = true;
+        inFlightRef.current = true;
+        lastInferenceTimeRef.current = now;
+        updateStatus('detecting');
+
         const features = extractFeaturesFromLandmarks(extractedHands);
-        onPredict(features, extractedHands);
+        onPredict(features, extractedHands)
+          .then((res) => {
+            if (res) {
+              if (res.status === 'recognized') {
+                updateStatus('recognized');
+              } else if (res.status === 'uncertain') {
+                updateStatus('uncertain');
+              } else {
+                updateStatus('no_hand');
+              }
+            }
+          })
+          .catch(() => {
+            updateStatus('unavailable');
+          })
+          .finally(() => {
+            inFlightRef.current = false;
+          });
       } else {
-        onPredict([], []);
+        // Only fire empty prediction once when transitioning from hands -> no hands
+        if (hadHandsRef.current) {
+          hadHandsRef.current = false;
+          updateStatus('no_hand');
+          onPredict([], []);
+        }
       }
     }
 
     animationFrameRef.current = requestAnimationFrame(() => processFrameRef.current());
-  }, [onPredict, isPredicting]);
+  }, [onPredict, updateStatus, isPredicting, isMirrored, showSkeleton, predictionResult, heuristicGesture, onHeuristicGesture]);
 
   useEffect(() => {
     processFrameRef.current = processFrame;
@@ -340,14 +393,39 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         ctx.textAlign = 'center';
         ctx.fillText(`DEMO GESTURE MODE: ${gesture.name}`, 320, 40);
 
-        // Draw landmarks
-        drawLandmarks(ctx, gesture.landmarks, 640, 480);
+        // Draw landmarks using anatomical utility
+        renderHandsOnCanvas(ctx, gesture.landmarks, 640, 480, {
+          showSkeleton: true,
+          showBoundingBox: true,
+          activeLabel: `Demo: ${gesture.label}`,
+          confidence: gesture.id === 'demo_uncertain' ? 0.35 : 0.95,
+        });
       }
     }
 
     setDetectedHands(gesture.handsCount);
+    updateStatus('detecting');
     const features = extractFeaturesFromLandmarks(gesture.landmarks);
-    onPredict(features, gesture.landmarks);
+    onPredict(features, gesture.landmarks).then((res) => {
+      if (res?.status === 'recognized') {
+        updateStatus('recognized');
+      } else if (res?.status === 'uncertain') {
+        updateStatus('uncertain');
+      }
+    });
+  };
+
+  // Status HUD text builder
+  const getHudStatusText = () => {
+    if (cameraStatus === 'initializing') return 'INITIALIZING CAMERA...';
+    if (!cameraActive && activeDemoGesture) return 'DEMO MODE';
+    if (detectedHands === 0) return 'NO HAND DETECTED';
+    if (predictionResult?.status === 'recognized' && predictionResult.label) {
+      return `RECOGNIZED: ${predictionResult.label}`;
+    }
+    if (heuristicGesture) return `HEURISTIC: ${heuristicGesture.toUpperCase()}`;
+    if (predictionResult?.status === 'uncertain') return 'UNCERTAIN GESTURE';
+    return 'DETECTING HAND...';
   };
 
   return (
@@ -364,30 +442,55 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         {!cameraActive && !activeDemoGesture && (
           <div className="webcam-inactive-overlay">
             <div className="webcam-inactive-icon">
-              <Camera size={28} />
+              {isInitializing ? (
+                <RefreshCw size={36} className="animate-spin text-cyan-400" />
+              ) : (
+                <Camera size={36} className="text-cyan-400" />
+              )}
             </div>
-            <h3 className="text-base font-bold text-white mb-1">Live Webcam Recognition</h3>
-            <p className="text-xs text-slate-400 max-w-sm mb-4">
-              Start your camera for real-time ISL hand tracking, or test instant gesture samples below without a camera.
+            <h3 className="text-base font-bold text-white mb-1">
+              {isInitializing ? 'Connecting to Camera...' : 'Camera Inactive'}
+            </h3>
+            <p className="text-xs text-slate-400 max-w-sm mb-4 leading-relaxed">
+              {isInitializing
+                ? 'Requesting browser media permissions. Please click Allow if prompted.'
+                : 'Click Start Webcam below to begin real-time ISL hand landmark tracking and gesture recognition.'}
             </p>
+
             <button
               onClick={() => startCamera()}
-              className="btn btn-primary"
+              disabled={isInitializing}
+              className="btn btn-primary btn-md shadow-lg shadow-cyan-500/20"
               id="start-webcam-primary-btn"
             >
-              <Camera size={16} />
-              <span>Start Webcam</span>
+              {isInitializing ? (
+                <>
+                  <RefreshCw size={15} className="animate-spin" />
+                  <span>Initializing Camera...</span>
+                </>
+              ) : (
+                <>
+                  <Camera size={15} />
+                  <span>Start Webcam</span>
+                </>
+              )}
             </button>
           </div>
         )}
 
-        {/* Live HUD Badges */}
+        {/* Live HUD Overlay (Active or Demo Mode) */}
         {(cameraActive || activeDemoGesture) && (
           <>
             <div className="webcam-hud-top-left">
-              <span className={`status-dot ${cameraActive ? 'status-dot-active' : 'panel-indicator-cyan'}`} />
+              <span
+                className={`status-dot ${
+                  cameraStatus === 'recognized' || cameraStatus === 'detecting'
+                    ? 'status-dot-active'
+                    : 'status-dot-offline'
+                }`}
+              />
               <span className="font-semibold text-white">
-                {cameraActive ? 'LIVE WEBCAM' : 'DEMO MODE'}
+                {getHudStatusText()}
               </span>
               {cameraActive && (
                 <>
@@ -407,7 +510,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
             {/* Bottom HUD: Live prediction readout */}
             {predictionResult && (
               <div className="webcam-hud-bottom">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span
                     className={`badge ${
                       predictionResult.status === 'recognized'
@@ -424,6 +527,11 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
                   <span className="text-xs font-medium text-slate-200 truncate max-w-xs">
                     {predictionResult.message}
                   </span>
+                  {heuristicGesture && (
+                    <span className="badge badge-accent text-[10px]">
+                      Heuristic: {heuristicGesture}
+                    </span>
+                  )}
                 </div>
                 {predictionResult.latency_ms > 0 && (
                   <span className="text-[11px] font-mono text-slate-400 shrink-0">
@@ -438,15 +546,25 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
 
       {/* Permission / Device Error Banner */}
       {permissionError && (
-        <div className="mt-2 w-full p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center gap-2 text-xs text-rose-300">
-          <AlertCircle size={16} className="shrink-0 text-rose-400" />
-          <span>{permissionError}</span>
+        <div className="mt-2 w-full p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-between gap-2 text-xs text-rose-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={16} className="shrink-0 text-rose-400" />
+            <span>{permissionError}</span>
+          </div>
+          <button
+            onClick={() => startCamera()}
+            className="btn btn-secondary btn-sm shrink-0"
+            title="Retry opening webcam"
+          >
+            <RefreshCw size={12} />
+            <span>Retry</span>
+          </button>
         </div>
       )}
 
-      {/* Camera Controls & Device Selector Bar */}
+      {/* Camera Controls, View Toggles & Device Selector Bar */}
       <div className="camera-controls-bar">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {cameraActive ? (
             <button onClick={stopCamera} className="btn btn-danger btn-sm" id="stop-camera-btn">
               <CameraOff size={14} />
@@ -455,13 +573,46 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
           ) : (
             <button
               onClick={() => startCamera()}
+              disabled={isInitializing}
               className="btn btn-primary btn-sm"
               id="start-camera-bar-btn"
             >
-              <Camera size={14} />
-              <span>{activeDemoGesture ? 'Switch to Camera' : 'Start Webcam'}</span>
+              {isInitializing ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Initializing...</span>
+                </>
+              ) : (
+                <>
+                  <Camera size={14} />
+                  <span>{activeDemoGesture ? 'Switch to Webcam' : 'Start Webcam'}</span>
+                </>
+              )}
             </button>
           )}
+
+          {/* View Toggles adapted from reference implementation */}
+          <button
+            type="button"
+            onClick={() => setIsMirrored(!isMirrored)}
+            className={`btn btn-secondary btn-sm ${isMirrored ? 'border-cyan-500/50 text-cyan-300' : 'text-slate-400'}`}
+            title={isMirrored ? 'Mirror View Active (Click to normal)' : 'Normal View (Click to mirror)'}
+            aria-label="Toggle Mirror View"
+          >
+            <FlipHorizontal size={13} />
+            <span>Mirror</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowSkeleton(!showSkeleton)}
+            className={`btn btn-secondary btn-sm ${showSkeleton ? 'border-cyan-500/50 text-cyan-300' : 'text-slate-400'}`}
+            title={showSkeleton ? 'Skeleton Overlay Visible' : 'Skeleton Overlay Hidden'}
+            aria-label="Toggle Skeleton Overlay"
+          >
+            {showSkeleton ? <Eye size={13} /> : <EyeOff size={13} />}
+            <span>Skeleton</span>
+          </button>
 
           {/* Device selector if multiple video inputs are found */}
           {availableDevices.length > 1 && (
@@ -507,6 +658,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
               onClick={() => {
                 setActiveDemoGesture(null);
                 setDetectedHands(0);
+                updateStatus('idle');
                 onPredict([], []);
               }}
               className="p-1 rounded text-slate-400 hover:text-white"
@@ -520,3 +672,5 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     </div>
   );
 };
+
+export default WebcamLandmarksCanvas;

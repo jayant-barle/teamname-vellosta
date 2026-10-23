@@ -5,6 +5,7 @@ __pycache__/
 *.jpg
 *.png
 *.pyc
-data/
+/data/
+!signbridge/data/
 node_modules/
 .pytest_cache/

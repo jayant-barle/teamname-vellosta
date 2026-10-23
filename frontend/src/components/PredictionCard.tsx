@@ -1,26 +1,72 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, HelpCircle, Layers, Plus, Clock } from 'lucide-react';
+import {
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  Layers,
+  Plus,
+  Clock,
+  RefreshCw,
+  Hand,
+  ShieldAlert,
+  Sparkles,
+} from 'lucide-react';
 import type { PredictResponse } from '../services/apiClient';
+
+export type CameraStatus =
+  | 'idle'
+  | 'initializing'
+  | 'no_hand'
+  | 'detecting'
+  | 'recognized'
+  | 'uncertain'
+  | 'unavailable';
 
 interface PredictionCardProps {
   prediction: PredictResponse | null;
   onAppendChar: (char: string) => void;
   confidenceThreshold: number;
+  cameraStatus?: CameraStatus;
+  isStable?: boolean;
+  heuristicGesture?: string | null;
 }
 
 export const PredictionCard: React.FC<PredictionCardProps> = ({
   prediction,
   onAppendChar,
   confidenceThreshold,
+  cameraStatus = 'idle',
+  isStable = false,
+  heuristicGesture = null,
 }) => {
   if (!prediction) {
+    let icon = <HelpCircle size={36} className="text-slate-500 mb-3" />;
+    let title = 'Camera Inactive';
+    let subtitle = "Click 'Start Webcam' above to begin real-time ISL gesture recognition, or test instant samples.";
+
+    if (cameraStatus === 'initializing') {
+      icon = <RefreshCw size={36} className="text-cyan-400 mb-3 animate-spin" />;
+      title = 'Initializing Camera...';
+      subtitle = 'Requesting camera permissions and initializing MediaPipe vision tracker.';
+    } else if (cameraStatus === 'no_hand') {
+      icon = <Hand size={36} className="text-slate-500 mb-3" />;
+      title = 'No Hand Detected';
+      subtitle = 'Camera is active. Position 1 or 2 hands inside the frame to recognize signs.';
+    } else if (cameraStatus === 'detecting') {
+      icon = <Layers size={36} className="text-cyan-400 mb-3 animate-pulse" />;
+      title = 'Detecting Hand...';
+      subtitle = 'Tracking 21 MediaPipe landmarks and evaluating Random Forest features.';
+    } else if (cameraStatus === 'unavailable') {
+      icon = <ShieldAlert size={36} className="text-rose-400 mb-3" />;
+      title = 'Recognition Unavailable';
+      subtitle = 'Camera access was denied, unavailable, or the FastAPI backend is offline.';
+    }
+
     return (
-      <div className="glass-panel p-6 flex flex-col items-center justify-center text-center min-h-[220px]">
-        <HelpCircle size={36} className="text-slate-500 mb-3" />
-        <h4 className="text-base font-semibold text-slate-300 mb-1">Awaiting Gesture</h4>
-        <p className="text-xs text-slate-400 max-w-xs">
-          Start the camera and show an Indian Sign Language hand sign to see live recognition.
-        </p>
+      <div className="glass-panel p-6 flex flex-col items-center justify-center text-center min-h-[200px]">
+        {icon}
+        <h4 className="text-base font-semibold text-slate-200 mb-1">{title}</h4>
+        <p className="text-xs text-slate-400 max-w-xs">{subtitle}</p>
       </div>
     );
   }
@@ -30,6 +76,17 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   const isRecognized = status === 'recognized' && label;
   const isUncertain = status === 'uncertain';
   const isNoDetection = status === 'no_detection';
+
+  // Explicit readable status label
+  const displayStatusLabel = isRecognized
+    ? 'Recognized Sign'
+    : isUncertain
+    ? 'Uncertain Sign'
+    : isNoDetection
+    ? 'No Hand Detected'
+    : status === 'missing_model'
+    ? 'Model Missing'
+    : 'Recognition Error';
 
   return (
     <div className="glass-panel prediction-box">
@@ -45,8 +102,8 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
       />
 
       {/* Card Header: Badges */}
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           <span
             className={`badge ${
               isRecognized
@@ -65,12 +122,25 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
             ) : (
               <Layers size={12} />
             )}
-            {status}
+            {displayStatusLabel}
           </span>
 
           {model_type && (
             <span className="badge badge-primary text-[10px]">
-              {model_type}
+              {model_type} (ISL RF)
+            </span>
+          )}
+
+          {isStable && isRecognized && (
+            <span className="badge badge-accent text-[9px]">
+              Stable
+            </span>
+          )}
+
+          {heuristicGesture && !isRecognized && (
+            <span className="badge bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 text-[10px] flex items-center gap-1">
+              <Sparkles size={10} />
+              <span>Heuristic: {heuristicGesture}</span>
             </span>
           )}
         </div>
@@ -84,7 +154,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
       </div>
 
       {/* Main Display: Recognized Character or Status Graphic */}
-      <div className="flex items-center justify-between my-2">
+      <div className="flex items-center justify-between my-2 flex-wrap gap-3">
         <div className="flex items-baseline gap-4">
           {label ? (
             <div
@@ -102,7 +172,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
 
           <div>
             <div className="text-xs uppercase tracking-wider font-semibold text-slate-400">
-              {isRecognized ? 'Target Sign' : isUncertain ? 'Best Hypothesis' : 'Current State'}
+              {isRecognized ? 'Recognized Gesture' : isUncertain ? 'Uncertain Candidate' : 'Current State'}
             </div>
             <div className="text-sm text-slate-300 font-medium max-w-[240px] truncate">
               {message}
@@ -111,7 +181,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         </div>
 
         {/* Append button if character available */}
-        {label && (
+        {label && isRecognized && (
           <button
             onClick={() => onAppendChar(label)}
             className="btn btn-secondary btn-sm"
@@ -124,44 +194,50 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
       </div>
 
       {/* Confidence Meter or Uncertainty Notice */}
-      <div className="mt-3 pt-2.5 border-t border-white/5">
+      <div className="mt-2 pt-2 border-t border-white/5">
         {confidencePercent !== null ? (
           <div>
             <div className="flex items-center justify-between text-xs mb-1 font-mono">
-              <span className="text-slate-400">Estimated Confidence</span>
+              <span className="text-slate-400 text-[11px]">Calibrated Confidence:</span>
               <span
-                className={`font-semibold ${
-                  confidencePercent >= confidenceThreshold * 100
-                    ? 'text-emerald-400'
-                    : 'text-amber-400'
-                }`}
+                className={
+                  isRecognized
+                    ? 'text-emerald-400 font-bold'
+                    : 'text-amber-400 font-bold'
+                }
               >
                 {confidencePercent}%
               </span>
             </div>
+
+            {/* Confidence Progress Bar */}
             <div className="confidence-track">
               <div
-                className="confidence-fill"
-                style={{
-                  width: `${Math.min(100, Math.max(5, confidencePercent))}%`,
-                  backgroundColor:
-                    confidencePercent >= confidenceThreshold * 100 ? '#10b981' : '#f59e0b',
-                }}
+                className={`confidence-bar ${
+                  isRecognized
+                    ? 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+                    : 'bg-amber-500'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, confidencePercent))}%` }}
               />
             </div>
-            {isUncertain && (
-              <p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1">
-                <AlertTriangle size={11} />
-                <span>Below confidence threshold ({Math.round(confidenceThreshold * 100)}%). Rejected to prevent false output.</span>
-              </p>
-            )}
           </div>
         ) : (
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
-            <span>Estimator confidence scores uncalibrated or probabilistic head not available.</span>
+          <p className="text-xs text-slate-400">
+            {isNoDetection
+              ? 'Awaiting hand in camera frame to extract 21 MediaPipe landmarks.'
+              : message}
+          </p>
+        )}
+
+        {isUncertain && (
+          <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 leading-snug">
+            Gesture confidence ({confidencePercent}%) is below the {Math.round(confidenceThreshold * 100)}% rejection threshold. Hold hand steady in good lighting.
           </div>
         )}
       </div>
     </div>
   );
 };
+
+export default PredictionCard;

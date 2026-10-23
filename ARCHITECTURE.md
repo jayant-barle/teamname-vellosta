@@ -76,9 +76,10 @@ graph TD
   - `GET /v1/phrases`: Metadata for the verified ISL video clip library.
 
 ### 2.4 Frontend Application (`frontend/`)
-- Single responsive application featuring two primary interaction modes:
-  1. **Sign $\rightarrow$ Text & Speech:** Live webcam stream, landmark visualizer, real-time prediction feedback, editable sentence builder, text-to-speech button.
-  2. **Speech $\rightarrow$ Sign Video:** Microphone recording, editable transcript box, smart phrase matcher, and video player with playback speed and loop controls.
+- Single responsive application featuring two primary interaction modes and conversation timeline:
+  1. **Sign $\rightarrow$ Text & Speech:** Live webcam stream with anatomical finger skeleton coloring (`drawLandmarks.ts`), viewport controls (Mirror view toggle, Skeleton visibility toggle), real-time model prediction feedback, dual-layer conversational heuristic reporting (`gestureClassifier.ts`), editable sentence builder with auto-append duplicate suppression hold lock, and expandable Voice Controls drawer (`useSpeechSynthesis.ts`).
+  2. **Speech $\rightarrow$ Sign Video:** Microphone recording (Web Speech Recognition STT), editable transcript box, smart phrase matcher, reviewed ISL video player with speed controls, loop, and interactive step-by-step motion & linguistic guide tabs (`ISLVideoPlayer.tsx`).
+  3. **Two-Way Conversation Timeline:** Synchronized log of communicative turns between Deaf signer and hearing peer with audio replay and text export (`ConversationHistory.tsx`).
 
 ---
 

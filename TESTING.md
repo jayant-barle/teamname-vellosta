@@ -163,3 +163,35 @@ dist/assets/index-rf6KrkUy.js          284.59 kB │ gzip: 87.10 kB
 - [x] **Interactive Demo Signs:** 5 pre-calibrated sample landmark vectors (`C`, `L`, `A`, `B`, `Uncertain`) tested and validated without camera hardware.
 - [x] **Phrase Category & Search:** Real-time filtering across 10 certified ISL demonstration clips.
 - [x] **Keyboard Shortcuts:** `?` opens Vocabulary modal; `Escape` closes it.
+
+---
+
+## 9. Phase 1 — Real-Time Webcam Hardening Verification
+
+| Feature / Defect | Verification Method | Result | Notes |
+| :--- | :--- | :--- | :--- |
+| **Duplicate Buttons** | Visual audit & DOM check | **Consolidated** | Single toolbar button with synchronized status: "Start Webcam", "Initializing Camera..." (disabled with spinner), "Stop Camera". |
+| **In-Flight Lock** | Rapid frame emission test | **Verified** | `inFlightRef` drops frame requests until preceding HTTP call finishes; eliminates overlapping requests. |
+| **Stream Teardown** | Stop camera & unmount test | **Verified** | All tracks on `MediaStream` stopped; canvas cleared; animation frame canceled. |
+| **Temporal Stability Window** | 4-frame majority voting | **Verified** | Rolling window of 4 predictions filters transient misclassifications before rendering prediction card. |
+| **Duplicate Suppression Lock** | 5-cycle hold test (~600ms) | **Verified** | Requires 5 consecutive stable frames before auto-appending; locks `lastAppendedCharRef` to prevent repeated duplicate letter spam. |
+| **Empty Predictions Throttling**| Transition check | **Verified** | Dispatches empty prediction `onPredict([], [])` only once on hand disappearance; prevents network flooding. |
+| **Hardware Graceful Fallback**  | Missing webcam device check | **Verified** | Clear banner displayed with device error details; interactive demo gestures allow full offline testing. |
+
+---
+
+## 10. Warlord-06 Reference Integration Verification
+
+| Test Scenario | Verification Method | Status | Details |
+| :--- | :--- | :--- | :--- |
+| **Anatomical Skeleton Rendering** | Visual inspection on Canvas overlay | **PASSED** | Renders 21 landmarks using distinct anatomical finger colors (Indigo, Amber, Sky, Emerald, Violet, Pink, Gold) with glowing blur and bounding box. |
+| **Mirror View Toggle** | Click "Mirror" toolbar button | **PASSED** | Toggles between mirrored view (X inverted) and non-mirrored view; landmarks and canvas coordinates remain aligned. |
+| **Skeleton Visibility Toggle** | Click "Skeleton" toolbar button | **PASSED** | Toggles skeleton rendering on/off without interrupting background feature extraction or inference. |
+| **Conversational Heuristic Layer**| Geometric hand shape evaluation | **PASSED** | Detects Thumbs Up (Yes), Peace (V-sign), Open Palm (Hello) as distinct `[Heuristic]` badges without altering primary ISL Random Forest predictions. |
+| **Voice Controls Drawer** | Click "Voice" button in Sentence Builder | **PASSED** | Expands drawer with system voice selector, speech rate slider, and auto-speak toggle. |
+| **ISL Motion Guide Tabs** | Switch tabs in `ISLVideoPlayer` | **PASSED** | "Motion Guide" tab displays numbered steps, handshape descriptions, and cultural linguistic notes alongside video playback. |
+| **Missing Video Fallback** | Video error event trigger | **PASSED** | Renders authentic fallback notice with button directing user to the step-by-step motion guide. |
+| **Automated Test Parity** | `python -m pytest -v tests/` | **27/27 PASSED** | All feature parity, model inference, and REST API tests pass in 5.64s. |
+| **Frontend Code Quality** | `npm run lint` & `npm run build` | **PASSED** | 0 errors and 0 warnings on 14 files; production bundle built cleanly in 3.26s. |
+
+

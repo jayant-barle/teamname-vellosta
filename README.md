@@ -14,15 +14,18 @@
 ## 🌟 Key Features
 
 1. **Sign &rarr; Text & Speech (Deaf Communicator View):**
-   - **Live Webcam Stream with Hand Landmark Overlays:** Real-time 21-keypoint MediaPipe skeleton visualization rendered directly in browser canvas.
+   - **Live Webcam Stream with Hand Landmark Overlays:** Real-time 21-keypoint MediaPipe skeleton visualization with anatomical finger color coding (Indigo palm, Amber thumb, Sky index, Emerald middle, Violet ring, Pink pinky, Gold fingertips, glowing blur, and bounding box pills).
+   - **Viewport Controls:** One-click Mirror View toggle and Skeleton Overlay visibility toggle.
    - **Preserved Model Inference:** Reuses the exact scikit-learn Random Forest model architecture and feature representations (42 features for 1-hand, 84 features for 2-hands).
    - **Configurable Uncertainty Rejection:** Ambiguous or low-confidence gestures are safely flagged as `uncertain` or `no_detection` rather than misclassifying signs.
-   - **Sentence Builder & Debounced Accumulator:** Accumulates recognized letters/digits with manual text correction, backspace, space, clear, and clipboard copy.
-   - **Browser Text-to-Speech (TTS):** Vocalizes confirmed sentences with customizable speech rates and voice selection.
+   - **Conversational Heuristic Layer:** Client-side geometric heuristics identifying general conversational gestures (Yes, Peace, Hello, Thank You, Help Me), explicitly tagged to distinguish heuristics from trained ISL model predictions.
+   - **Sentence Builder & Debounced Accumulator:** Accumulates recognized letters/digits with manual text correction, backspace, space, clear, clipboard copy, and duplicate-suppression hold lock.
+   - **Voice Controls & Speech Synthesis (TTS):** Expandable Voice Settings Drawer with system voice selection, speech rate slider (`0.7x` to `1.3x`), auto-speak confirmed signs toggle, and audio vocalization.
 
 2. **Speech &rarr; Verified ISL Video (Hearing Peer View):**
    - **Microphone Speech Recognition (STT):** Transcribes spoken speech into editable text in real-time.
-   - **Reviewed ISL Video Library:** Curated video clips for high-frequency everyday Indian Sign Language phrases (e.g. *"Hello / Namaste"*, *"Thank You"*, *"Please"*, *"Help"*, *"Yes"*, *"No"*, *"Good Morning"*, *"Welcome"*).
+   - **Reviewed ISL Video Library:** Curated video clips for high-frequency everyday Indian Sign Language phrases (e.g. *"Hello / Namaste"*, *"Thank You"*, *"Please"*, *"Help"*, *"Yes"*, *"No"*, *"Good Morning"*, *"Welcome"*, *"How are you?"*, *"Goodbye"*).
+   - **Step-by-Step Motion & Linguistic Guides:** Detailed numbered motion steps, handshape descriptions, and cultural/grammatical notes for each everyday phrase.
    - **Fingerspelling Fallback Breakdown:** Automatically breaks down custom words and names into individual ISL hand posture cards.
 
 3. **Two-Way Split-Screen Workstation:**

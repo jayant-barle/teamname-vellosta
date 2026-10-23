@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play, Pause, RotateCcw, FastForward, Info, Layers, Film } from 'lucide-react';
+import { Play, Pause, RotateCcw, FastForward, Info, Layers, Film, BookOpen, Sparkles, FileVideo } from 'lucide-react';
 import type { PhraseItem } from '../services/apiClient';
 
 interface ISLVideoPlayerProps {
@@ -12,7 +12,16 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isLooping, setIsLooping] = useState<boolean>(true);
   const [playbackRate, setPlaybackRate] = useState<number>(1.0);
-  const [activeTab, setActiveTab] = useState<'video' | 'fingerspelling'>('video');
+  const [videoError, setVideoError] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'video' | 'guide' | 'fingerspelling'>('video');
+  const [activeStepTab, setActiveStepTab] = useState<number>(0);
+  const [prevPhraseId, setPrevPhraseId] = useState<string | undefined>(phrase?.id);
+
+  if (phrase?.id !== prevPhraseId) {
+    setPrevPhraseId(phrase?.id);
+    setVideoError(false);
+    setActiveStepTab(0);
+  }
 
   useEffect(() => {
     if (videoRef.current) {
@@ -45,25 +54,35 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
   return (
     <div className="glass-panel video-player-box">
       {/* Header & Mode Switcher */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Film size={18} className="text-indigo-400" />
           <h3 className="text-base font-bold text-white">Reviewed ISL Video Player</h3>
         </div>
 
-        {/* Tab switch between phrase clip and fingerspelling */}
-        {lettersToSpell.length > 0 && (
-          <div className="flex bg-[#090e1a] p-0.5 rounded-lg border border-white/10 text-xs">
-            <button
-              onClick={() => setActiveTab('video')}
-              className={`px-2.5 py-1 rounded-md transition-all ${
-                activeTab === 'video'
-                  ? 'bg-indigo-600 text-white font-semibold'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Phrase Clip
-            </button>
+        {/* Tab switcher: Video Clip, Motion Guide, Fingerspelling */}
+        <div className="flex bg-[#090e1a] p-0.5 rounded-lg border border-white/10 text-xs">
+          <button
+            onClick={() => setActiveTab('video')}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              activeTab === 'video'
+                ? 'bg-indigo-600 text-white font-semibold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Video Clip
+          </button>
+          <button
+            onClick={() => setActiveTab('guide')}
+            className={`px-2.5 py-1 rounded-md transition-all ${
+              activeTab === 'guide'
+                ? 'bg-indigo-600 text-white font-semibold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Motion Guide
+          </button>
+          {lettersToSpell.length > 0 && (
             <button
               onClick={() => setActiveTab('fingerspelling')}
               className={`px-2.5 py-1 rounded-md transition-all ${
@@ -74,36 +93,56 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
             >
               Fingerspell ({lettersToSpell.length})
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {activeTab === 'video' ? (
         phrase ? (
           <div>
             {/* Video Stage Container with constrained aspect ratio */}
-            <div className="video-stage-container mb-3">
-              <video
-                ref={videoRef}
-                src={phrase.video_url}
-                playsInline
-                autoPlay
-                loop={isLooping}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                className="video-stage-element"
-              />
+            <div className="video-stage-container mb-3 relative">
+              {!videoError ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    src={phrase.video_url}
+                    playsInline
+                    autoPlay
+                    loop={isLooping}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onError={() => setVideoError(true)}
+                    className="video-stage-element"
+                  />
 
-              {/* Play/Pause Overlay Button */}
-              <button
-                onClick={togglePlay}
-                className="video-play-overlay"
-                aria-label={isPlaying ? 'Pause video' : 'Play video'}
-              >
-                <div className="video-play-circle">
-                  {isPlaying ? <Pause size={22} /> : <Play size={22} className="ml-1" />}
+                  {/* Play/Pause Overlay Button */}
+                  <button
+                    onClick={togglePlay}
+                    className="video-play-overlay"
+                    aria-label={isPlaying ? 'Pause video' : 'Play video'}
+                  >
+                    <div className="video-play-circle">
+                      {isPlaying ? <Pause size={22} /> : <Play size={22} className="ml-1" />}
+                    </div>
+                  </button>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 text-center text-slate-400 min-h-[220px]">
+                  <FileVideo size={36} className="text-indigo-400 mb-2" />
+                  <h4 className="text-sm font-semibold text-white mb-1">Authentic ISL Video Clip Awaited</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mb-3">
+                    Expected path: <code>public{phrase.video_url}</code>. SignBridge intentionally preserves accurate ISL clips rather than substituting unverified gestures.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab('guide')}
+                    className="btn btn-secondary btn-sm"
+                  >
+                    <BookOpen size={13} />
+                    <span>View Step-by-Step Motion Guide</span>
+                  </button>
                 </div>
-              </button>
+              )}
 
               {/* Video Overlay Badges */}
               <div className="absolute top-3 left-3 flex items-center gap-2">
@@ -121,6 +160,7 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
               <div className="flex items-center gap-2">
                 <button
                   onClick={togglePlay}
+                  disabled={videoError}
                   className="btn btn-secondary btn-sm"
                   title={isPlaying ? 'Pause' : 'Play'}
                 >
@@ -129,6 +169,7 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
                 </button>
                 <button
                   onClick={() => setIsLooping(!isLooping)}
+                  disabled={videoError}
                   className={`btn btn-sm ${
                     isLooping ? 'btn-primary' : 'btn-secondary text-slate-400'
                   }`}
@@ -147,6 +188,7 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
                   <button
                     key={rate}
                     onClick={() => handleRateChange(rate)}
+                    disabled={videoError}
                     className={`rate-btn ${
                       playbackRate === rate ? 'rate-btn-active' : ''
                     }`}
@@ -161,7 +203,7 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
             <div className="phrase-technique-card">
               <div className="flex items-center gap-1.5 text-slate-200 font-semibold mb-1 text-xs">
                 <Info size={13} className="text-indigo-400" />
-                <span>Signing Technique:</span>
+                <span>ISL Signing Technique:</span>
               </div>
               <p className="text-slate-300 text-xs leading-relaxed">{phrase.description}</p>
             </div>
@@ -173,6 +215,69 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
             <p className="text-xs text-slate-400 max-w-xs">
               Select any everyday phrase above or speak into the microphone to review demonstration video clips.
             </p>
+          </div>
+        )
+      ) : activeTab === 'guide' ? (
+        /* Motion & Linguistic Guide Tab */
+        phrase ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between pb-2 border-b border-white/10 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <BookOpen size={16} className="text-indigo-400" />
+                <h4 className="text-sm font-bold text-white">
+                  Motion Guide: <span className="text-cyan-300">"{phrase.phrase}"</span>
+                </h4>
+              </div>
+              {phrase.handshape && (
+                <span className="badge badge-accent text-[11px]">
+                  {phrase.handshape}
+                </span>
+              )}
+            </div>
+
+            {/* Step-by-Step Motion Timeline */}
+            {phrase.steps && phrase.steps.length > 0 ? (
+              <div className="flex flex-col gap-2">
+                {phrase.steps.map((st, idx) => (
+                  <div
+                    key={st.step}
+                    onClick={() => setActiveStepTab(idx)}
+                    className={`p-2.5 rounded-lg border cursor-pointer transition-all ${
+                      activeStepTab === idx
+                        ? 'bg-indigo-950/40 border-indigo-500/50'
+                        : 'bg-black/20 border-white/5 hover:border-white/15'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {st.step}
+                      </span>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-100">{st.title}</div>
+                        <div className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">{st.detail}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-300 leading-relaxed">{phrase.description}</p>
+            )}
+
+            {/* Linguistic / Cultural Notes */}
+            {phrase.linguistic_notes && (
+              <div className="p-3 rounded-lg bg-indigo-950/30 border border-indigo-500/20 text-xs text-indigo-200 leading-relaxed">
+                <div className="flex items-center gap-1.5 font-semibold text-indigo-300 mb-1">
+                  <Sparkles size={13} />
+                  <span>ISL Linguistic & Cultural Context:</span>
+                </div>
+                <span>{phrase.linguistic_notes}</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-400 text-xs">
+            Select a phrase to view step-by-step motion breakdowns.
           </div>
         )
       ) : (
@@ -218,3 +323,5 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
     </div>
   );
 };
+
+export default ISLVideoPlayer;

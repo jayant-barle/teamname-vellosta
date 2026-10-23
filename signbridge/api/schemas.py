@@ -62,3 +62,6 @@ class PhraseItem(BaseModel):
     video_url: str
     sample_image: Optional[str] = None
     tags: List[str] = Field(default_factory=list)
+    handshape: Optional[str] = Field(default=None, description="Handshape posture description")
+    steps: Optional[List[Dict[str, Any]]] = Field(default=None, description="Step-by-step motion instructions")
+    linguistic_notes: Optional[str] = Field(default=None, description="ISL grammar and linguistic context")

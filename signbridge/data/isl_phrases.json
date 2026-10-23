@@ -1,0 +1,172 @@
+[
+  {
+    "id": "hello",
+    "phrase": "Hello / Namaste",
+    "category": "Greetings",
+    "description": "Both palms joined in front of chest (Namaste) or dominant hand waving from forehead with open palm outward.",
+    "hands": 2,
+    "video_url": "/isl_clips/hello.mp4",
+    "sample_image": "/isl_clips/hello.png",
+    "tags": ["hello", "hi", "namaste", "greetings"],
+    "handshape": "Flat open palms pressed together (Namaste) or open 'B' hand at forehead",
+    "steps": [
+      { "step": 1, "title": "Starting Position", "detail": "Bring both hands flat in front of the chest, fingers pointing upward." },
+      { "step": 2, "title": "Namaste Gesture", "detail": "Press palms and fingers gently together with a slight nod of the head." },
+      { "step": 3, "title": "Alternative Wave", "detail": "Alternatively, place dominant hand at forehead and sweep gently outward with a warm smile." }
+    ],
+    "linguistic_notes": "In Indian Sign Language (ISL), 'Namaste' carries deep cultural reverence and is widely preferred in formal and polite settings across India."
+  },
+  {
+    "id": "thank_you",
+    "phrase": "Thank You",
+    "category": "Courtesy",
+    "description": "Fingertips of dominant flat hand touch chin and move forward and slightly downward toward the listener.",
+    "hands": 1,
+    "video_url": "/isl_clips/thank_you.mp4",
+    "sample_image": "/isl_clips/thank_you.png",
+    "tags": ["thank you", "thanks", "dhanyawad", "shukriya"],
+    "handshape": "Flat open hand with fingers together, thumb relaxed",
+    "steps": [
+      { "step": 1, "title": "Touch Chin", "detail": "Touch the tips of your dominant fingers lightly to your chin or lower lip." },
+      { "step": 2, "title": "Forward Sweep", "detail": "Move your hand smoothly outward and slightly downward toward the person you are thanking." },
+      { "step": 3, "title": "Nod", "detail": "Accompany with a pleasant facial expression and slight forward nod of gratitude." }
+    ],
+    "linguistic_notes": "The outward motion indicates transferring appreciation from oneself to the receiver. Non-manual facial markers reinforce sincere courtesy."
+  },
+  {
+    "id": "please",
+    "phrase": "Please",
+    "category": "Courtesy",
+    "description": "Open flat palm rubbed in a circular clockwise motion against chest.",
+    "hands": 1,
+    "video_url": "/isl_clips/please.mp4",
+    "sample_image": "/isl_clips/please.png",
+    "tags": ["please", "request", "kripya"],
+    "handshape": "Flat open palm facing chest",
+    "steps": [
+      { "step": 1, "title": "Placement", "detail": "Place flat dominant palm against center of upper chest." },
+      { "step": 2, "title": "Circular Rub", "detail": "Rub palm in a clockwise circular motion 2-3 times." },
+      { "step": 3, "title": "Facial Expression", "detail": "Soften facial expression with gentle eyebrow posture to indicate earnest request." }
+    ],
+    "linguistic_notes": "The circular motion against the chest symbolizes heartfelt sincerity. Used before asking for assistance or permission."
+  },
+  {
+    "id": "help",
+    "phrase": "Help",
+    "category": "Assistance",
+    "description": "Dominant hand closed in a fist with thumb up, placed on the open palm of non-dominant hand, lifting both upward together.",
+    "hands": 2,
+    "video_url": "/isl_clips/help.mp4",
+    "sample_image": "/isl_clips/help.png",
+    "tags": ["help", "assist", "emergency", "madad"],
+    "handshape": "Dominant thumbs-up fist on flat non-dominant palm base",
+    "steps": [
+      { "step": 1, "title": "Base Hand", "detail": "Extend non-dominant hand flat, palm facing upward at stomach height." },
+      { "step": 2, "title": "Dominant Fist", "detail": "Form a fist with dominant hand, thumb upright, and place on non-dominant palm." },
+      { "step": 3, "title": "Upward Lift", "detail": "Lift both hands upward together toward yourself for 'Help me', or toward peer for 'Help you'." }
+    ],
+    "linguistic_notes": "In ISL, directional signs alter their target based on spatial movement: lifting inward toward your torso denotes requesting assistance."
+  },
+  {
+    "id": "yes",
+    "phrase": "Yes",
+    "category": "Responses",
+    "description": "Dominant hand formed into an 'S' fist, nodding up and down from the wrist like a nodding head.",
+    "hands": 1,
+    "video_url": "/isl_clips/yes.mp4",
+    "sample_image": "/isl_clips/yes.png",
+    "tags": ["yes", "haan", "agree", "correct"],
+    "handshape": "Closed fist with thumb across front fingers (nodding head metaphor)",
+    "steps": [
+      { "step": 1, "title": "Form Fist", "detail": "Hold dominant hand in a relaxed fist at shoulder height." },
+      { "step": 2, "title": "Wrist Nod", "detail": "Flex wrist downward and upward twice, mimicking the movement of an affirming head." },
+      { "step": 3, "title": "Head Agreement", "detail": "Synchronize with a natural nod of your head." }
+    ],
+    "linguistic_notes": "The fist acts as a visual representation of the human head affirming agreement. Crucial response in everyday dialog."
+  },
+  {
+    "id": "no",
+    "phrase": "No",
+    "category": "Responses",
+    "description": "Index and middle fingers snap down quickly against the thumb, like an emphatic negation.",
+    "hands": 1,
+    "video_url": "/isl_clips/no.mp4",
+    "sample_image": "/isl_clips/no.png",
+    "tags": ["no", "nahi", "disagree", "incorrect"],
+    "handshape": "Index and middle fingers extended, then pinching down to thumb",
+    "steps": [
+      { "step": 1, "title": "Extend Fingers", "detail": "Extend index and middle fingers together, thumb held open below them." },
+      { "step": 2, "title": "Snap Closed", "detail": "Snap index and middle fingertips briskly down against the pad of the thumb." },
+      { "step": 3, "title": "Head Shake", "detail": "Accompany with a slight head shake and furrowed brows." }
+    ],
+    "linguistic_notes": "The crisp closure signifies an emphatic negative response. Used universally in ISL for denial or disagreement."
+  },
+  {
+    "id": "good_morning",
+    "phrase": "Good Morning",
+    "category": "Greetings",
+    "description": "Sign 'Good' (dominant flat hand from chin forward) followed by 'Morning' (dominant hand rising up from behind horizontal non-dominant arm like sunrise).",
+    "hands": 2,
+    "video_url": "/isl_clips/good_morning.mp4",
+    "sample_image": "/isl_clips/good_morning.png",
+    "tags": ["good morning", "subah", "morning"],
+    "handshape": "Compound sign: Flat hand (Good) + Rising sunrise hand (Morning)",
+    "steps": [
+      { "step": 1, "title": "Sign 'Good'", "detail": "Touch dominant fingertips to chin and bring forward onto flat non-dominant hand." },
+      { "step": 2, "title": "Horizon Setup", "detail": "Lay non-dominant forearm horizontally across chest to represent the horizon." },
+      { "step": 3, "title": "Sunrise Rise", "detail": "Raise dominant curved hand upward from behind the forearm, visualizing sunrise." }
+    ],
+    "linguistic_notes": "Compound signs in ISL blend two core conceptual signs smoothly. The sunrise motion visually reflects the morning sun."
+  },
+  {
+    "id": "welcome",
+    "phrase": "Welcome",
+    "category": "Courtesy",
+    "description": "Both open hands facing upward sweeping gently inward toward the body.",
+    "hands": 2,
+    "video_url": "/isl_clips/welcome.mp4",
+    "sample_image": "/isl_clips/welcome.png",
+    "tags": ["welcome", "swagatam", "greet"],
+    "handshape": "Both palms open and cupped slightly upward",
+    "steps": [
+      { "step": 1, "title": "Open Posture", "detail": "Hold both open palms slightly upward away from the body at waist level." },
+      { "step": 2, "title": "Inward Arc", "detail": "Draw both hands in a smooth inviting arc toward your torso." },
+      { "step": 3, "title": "Welcoming Smile", "detail": "Pair with welcoming eye contact and an open torso posture." }
+    ],
+    "linguistic_notes": "The inward sweeping arc represents inviting guests into one's home or gathering space. Warm and hospitable."
+  },
+  {
+    "id": "how_are_you",
+    "phrase": "How are you?",
+    "category": "Questions",
+    "description": "Both hands curved forward opening outward toward conversation partner with questioning facial expression.",
+    "hands": 2,
+    "video_url": "/isl_clips/how_are_you.mp4",
+    "sample_image": "/isl_clips/how_are_you.png",
+    "tags": ["how are you", "kya haal hai", "how"],
+    "handshape": "Curved 'C' hands rolling outward into open palms toward listener",
+    "steps": [
+      { "step": 1, "title": "Initial Curved Hands", "detail": "Position both curved hands in front of chest, backs of fingers touching." },
+      { "step": 2, "title": "Roll Outward", "detail": "Roll hands outward so palms face upward and forward toward your partner." },
+      { "step": 3, "title": "Questioning Expression", "detail": "Tilt head slightly forward and lower eyebrows to signal a question." }
+    ],
+    "linguistic_notes": "In ISL grammatical questions, the facial marker (lowered eyebrows and tilted head) is mandatory to denote inquiry."
+  },
+  {
+    "id": "goodbye",
+    "phrase": "Goodbye",
+    "category": "Greetings",
+    "description": "Open hand raised with palm outward, fingers waving toward conversation partner.",
+    "hands": 1,
+    "video_url": "/isl_clips/goodbye.mp4",
+    "sample_image": "/isl_clips/goodbye.png",
+    "tags": ["goodbye", "bye", "alvida", "see you"],
+    "handshape": "Open flat palm facing forward at shoulder height",
+    "steps": [
+      { "step": 1, "title": "Raise Hand", "detail": "Raise dominant hand to shoulder/head level, palm facing outward." },
+      { "step": 2, "title": "Wave Fingers", "detail": "Wave fingers gently back and forth toward your conversational partner." },
+      { "step": 3, "title": "Departure Nod", "detail": "Maintain warm eye contact with a parting head nod." }
+    ],
+    "linguistic_notes": "Standard departure greeting across Indian Deaf communities, recognized across all regional dialects."
+  }
+]

@@ -28,6 +28,7 @@ import type {
 
 import { WebcamLandmarksCanvas } from './components/WebcamLandmarksCanvas';
 import { PredictionCard } from './components/PredictionCard';
+import type { CameraStatus } from './components/PredictionCard';
 import { SentenceBuilder } from './components/SentenceBuilder';
 import { SpeechToSignPanel } from './components/SpeechToSignPanel';
 import { ISLVideoPlayer } from './components/ISLVideoPlayer';
@@ -48,10 +49,19 @@ export const App: React.FC = () => {
   const [activeMode, setActiveMode] = useState<'both' | 'sign_to_speech' | 'speech_to_sign' | 'timeline'>('both');
 
   // Sign to Speech State
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>('idle');
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<PredictResponse | null>(null);
+  const [isPredictionStable, setIsPredictionStable] = useState<boolean>(false);
   const [sentenceText, setSentenceText] = useState<string>('');
   const [autoAppend, setAutoAppend] = useState<boolean>(false);
+  const [autoSpeak, setAutoSpeak] = useState<boolean>(false);
+  const [heuristicGesture, setHeuristicGesture] = useState<string | null>(null);
+
+  // Stability & duplicate suppression refs
+  const recentPredictionsRef = useRef<string[]>([]);
+  const lastAppendedCharRef = useRef<string | null>(null);
+  const stableHoldCyclesRef = useRef<number>(0);
 
   // Speech to Sign State
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
@@ -73,7 +83,6 @@ export const App: React.FC = () => {
 
   // Auto-append debouncer
   const lastCharRef = useRef<string | null>(null);
-  const charHoldCountRef = useRef<number>(0);
 
   // Data Fetching
   const loadInitialData = useCallback(async () => {
@@ -152,20 +161,37 @@ export const App: React.FC = () => {
       );
       setPrediction(res);
 
-      // Auto-append logic for confirmed predictions
-      if (autoAppend && res.status === 'recognized' && res.label) {
-        if (lastCharRef.current === res.label) {
-          charHoldCountRef.current++;
-          if (charHoldCountRef.current === 6) {
-            setSentenceText((prev: string) => prev + res.label);
+      // Temporal smoothing across rolling window
+      if (res.status === 'recognized' && res.label) {
+        recentPredictionsRef.current = [...recentPredictionsRef.current.slice(-3), res.label];
+        const matchCount = recentPredictionsRef.current.filter((l) => l === res.label).length;
+        const stable = matchCount >= 3;
+        setIsPredictionStable(stable);
+
+        // Auto-append logic with duplicate suppression lock
+        if (autoAppend && stable) {
+          if (lastCharRef.current === res.label) {
+            stableHoldCyclesRef.current++;
+            // Require ~600ms hold (5 cycles) and prevent repeated duplicate insertion on same hold
+            if (stableHoldCyclesRef.current >= 5 && lastAppendedCharRef.current !== res.label) {
+              setSentenceText((prev: string) => prev + res.label);
+              lastAppendedCharRef.current = res.label;
+              if (autoSpeak && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(res.label));
+              }
+            }
+          } else {
+            lastCharRef.current = res.label;
+            stableHoldCyclesRef.current = 1;
           }
-        } else {
-          lastCharRef.current = res.label;
-          charHoldCountRef.current = 1;
         }
-      } else if (res.status !== 'recognized') {
+      } else {
+        setIsPredictionStable(false);
+        recentPredictionsRef.current = [];
         lastCharRef.current = null;
-        charHoldCountRef.current = 0;
+        lastAppendedCharRef.current = null;
+        stableHoldCyclesRef.current = 0;
       }
 
       return res;
@@ -380,6 +406,8 @@ export const App: React.FC = () => {
                   onPredict={handlePredict}
                   isPredicting={isPredicting}
                   predictionResult={prediction}
+                  onStatusChange={setCameraStatus}
+                  onHeuristicGesture={setHeuristicGesture}
                 />
 
                 {/* Recognized Gesture Display & Confidence Card */}
@@ -387,6 +415,9 @@ export const App: React.FC = () => {
                   prediction={prediction}
                   onAppendChar={handleAppendChar}
                   confidenceThreshold={health?.confidence_threshold || 0.55}
+                  cameraStatus={cameraStatus}
+                  isStable={isPredictionStable}
+                  heuristicGesture={heuristicGesture}
                 />
 
                 {/* Sentence Accumulator & Text-To-Speech */}
@@ -397,6 +428,8 @@ export const App: React.FC = () => {
                   lastRecognizedChar={prediction?.label || null}
                   autoAppend={autoAppend}
                   onToggleAutoAppend={setAutoAppend}
+                  autoSpeak={autoSpeak}
+                  onToggleAutoSpeak={setAutoSpeak}
                   onSendMessage={handleSignerSendMessage}
                 />
               </section>
