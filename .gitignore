@@ -1,0 +1,7 @@
+__pycache__/
+*.p
+*.pickle
+*.jpg
+*.png
+*.pyc
+data/
