@@ -56,11 +56,20 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   const animationFrameRef = useRef<number | null>(null);
   const lastInferenceTimeRef = useRef<number>(0);
   const lastVideoTimestampRef = useRef<number>(-1);
+  const demoIntervalRef = useRef<any>(null);
+  const lastDiagTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
   const lastFpsTimeRef = useRef<number>(0);
   const processFrameRef = useRef<() => void>(() => {});
   const inFlightRef = useRef<boolean>(false);
   const hadHandsRef = useRef<boolean>(false);
+
+  const clearDemoInterval = useCallback(() => {
+    if (demoIntervalRef.current) {
+      clearInterval(demoIntervalRef.current);
+      demoIntervalRef.current = null;
+    }
+  }, []);
 
   // Helper to propagate status
   const updateStatus = useCallback(
@@ -157,6 +166,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     }
     setCameraActive(false);
     setIsInitializing(false);
+    clearDemoInterval();
     setDetectedHands(0);
     hadHandsRef.current = false;
     inFlightRef.current = false;
@@ -164,7 +174,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     setHeuristicGesture(null);
     if (onHeuristicGesture) onHeuristicGesture(null);
     updateStatus('idle');
-  }, [updateStatus, onHeuristicGesture]);
+  }, [updateStatus, onHeuristicGesture, clearDemoInterval]);
 
   // Component unmount cleanup: unconditionally release hardware stream
   useEffect(() => {
@@ -361,6 +371,15 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         updateStatus('detecting');
 
         const features = extractFeaturesFromLandmarks(rawHands);
+
+        // Throttled CV diagnostic log (every 2.5s)
+        if (now - lastDiagTimeRef.current > 2500) {
+          lastDiagTimeRef.current = now;
+          console.log(
+            `[SignBridge CV Diagnostic] Video: ${video.videoWidth}x${video.videoHeight} (readyState=${video.readyState}), MP: ${landmarkerRef.current ? 'Ready' : 'Loading'}, Hands: ${handCount}, Feats: ${features.length}`
+          );
+        }
+
         onPredict(features, rawHands)
           .then((res) => {
             if (res) {
@@ -410,6 +429,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   // Demo gesture preview handler (works offline and camera-less)
   const handleSelectDemoGesture = (gesture: DemoGesture) => {
     stopCamera();
+    clearDemoInterval();
     setActiveDemoGesture(gesture.id);
 
     const canvas = canvasRef.current;
@@ -433,7 +453,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
           showSkeleton: true,
           showBoundingBox: true,
           activeLabel: `Demo: ${gesture.label}`,
-          confidence: gesture.id === 'demo_uncertain' ? 0.35 : 0.95,
+          confidence: gesture.id === 'demo_uncertain' ? 0.15 : 0.95,
         });
       }
     }
@@ -441,13 +461,20 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     setDetectedHands(gesture.handsCount);
     updateStatus('detecting');
     const features = extractFeaturesFromLandmarks(gesture.landmarks);
-    onPredict(features, gesture.landmarks).then((res) => {
-      if (res?.status === 'recognized') {
-        updateStatus('recognized');
-      } else if (res?.status === 'uncertain') {
-        updateStatus('uncertain');
-      }
-    });
+
+    const runDemoPredict = () => {
+      onPredict(features, gesture.landmarks).then((res) => {
+        if (res?.status === 'recognized') {
+          updateStatus('recognized');
+        } else if (res?.status === 'uncertain') {
+          updateStatus('uncertain');
+        }
+      });
+    };
+
+    runDemoPredict();
+    // Sustained stream simulation for temporal smoothing and auto-append verification
+    demoIntervalRef.current = setInterval(runDemoPredict, 160);
   };
 
   // Status HUD text builder
@@ -691,6 +718,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
           {activeDemoGesture && (
             <button
               onClick={() => {
+                clearDemoInterval();
                 setActiveDemoGesture(null);
                 setDetectedHands(0);
                 updateStatus('idle');

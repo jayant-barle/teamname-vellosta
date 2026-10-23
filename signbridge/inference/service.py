@@ -6,6 +6,7 @@ while preserving exact scikit-learn estimator interaction without GUI dependenci
 
 import os
 import pickle
+import logging
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -17,6 +18,8 @@ from signbridge.inference.feature_extractor import (
     extract_multi_hand_features,
     FEATURES_PER_HAND,
 )
+
+logger = logging.getLogger("signbridge.inference")
 
 class PredictionState(str, Enum):
     RECOGNIZED = "recognized"
@@ -281,6 +284,15 @@ class SignBridgeInferenceService:
             # Estimator does not support probabilities: do not fabricate confidence!
             confidence = None
             message = f"Recognized {model_type} gesture: {label} (uncalibrated estimator)"
+
+        logger.debug(
+            "[ISL Inference] Model: %s | Pred: %s | Conf: %.3f (thresh: %.2f) -> %s",
+            model_type,
+            label,
+            confidence if confidence is not None else 0.0,
+            self.confidence_threshold,
+            status.value,
+        )
 
         return PredictionResult(
             status=status,

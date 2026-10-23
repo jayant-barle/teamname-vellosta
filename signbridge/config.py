@@ -32,7 +32,7 @@ class Settings(BaseModel):
     
     # Inference & Uncertainty
     confidence_threshold: float = Field(
-        default_factory=lambda: float(os.getenv("SIGNBRIDGE_CONFIDENCE_THRESHOLD", "0.55"))
+        default_factory=lambda: float(os.getenv("SIGNBRIDGE_CONFIDENCE_THRESHOLD", "0.25"))
     )
     
     # Host & Port

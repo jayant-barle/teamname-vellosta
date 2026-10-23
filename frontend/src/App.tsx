@@ -53,6 +53,7 @@ export const App: React.FC = () => {
   const [isPredicting, setIsPredicting] = useState<boolean>(false);
   const [prediction, setPrediction] = useState<PredictResponse | null>(null);
   const [isPredictionStable, setIsPredictionStable] = useState<boolean>(false);
+  const [confidenceThreshold, setConfidenceThreshold] = useState<number>(0.25);
   const [sentenceText, setSentenceText] = useState<string>('');
   const [autoAppend, setAutoAppend] = useState<boolean>(false);
   const [autoSpeak, setAutoSpeak] = useState<boolean>(false);
@@ -99,6 +100,9 @@ export const App: React.FC = () => {
       if (healthData) {
         setHealth(healthData);
         setApiError(null);
+        if (typeof healthData.confidence_threshold === 'number') {
+          setConfidenceThreshold(healthData.confidence_threshold);
+        }
       } else {
         setApiError('FastAPI backend not detected at http://127.0.0.1:8000. Start backend server.');
       }
@@ -157,7 +161,8 @@ export const App: React.FC = () => {
     try {
       const res = await predictGesture(
         features.length > 0 ? features : undefined,
-        landmarks.length > 0 ? landmarks : undefined
+        landmarks.length > 0 ? landmarks : undefined,
+        confidenceThreshold
       );
       setPrediction(res);
 
@@ -167,6 +172,11 @@ export const App: React.FC = () => {
         const matchCount = recentPredictionsRef.current.filter((l) => l === res.label).length;
         const stable = matchCount >= 3;
         setIsPredictionStable(stable);
+
+        // Diagnostic log
+        console.log(
+          `[SignBridge Predict Flow] RECOGNIZED '${res.label}' with ${(res.confidence! * 100).toFixed(1)}% conf (stable=${stable}, matchCount=${matchCount})`
+        );
 
         // Auto-append logic with duplicate suppression lock
         if (autoAppend && stable) {
@@ -187,6 +197,11 @@ export const App: React.FC = () => {
           }
         }
       } else {
+        if (res.status === 'uncertain') {
+          console.log(
+            `[SignBridge Predict Flow] UNCERTAIN candidate '${res.label}' (${((res.confidence ?? 0) * 100).toFixed(1)}% < ${(confidenceThreshold * 100).toFixed(0)}% threshold)`
+          );
+        }
         setIsPredictionStable(false);
         recentPredictionsRef.current = [];
         lastCharRef.current = null;
@@ -414,7 +429,8 @@ export const App: React.FC = () => {
                 <PredictionCard
                   prediction={prediction}
                   onAppendChar={handleAppendChar}
-                  confidenceThreshold={health?.confidence_threshold || 0.55}
+                  confidenceThreshold={confidenceThreshold}
+                  onThresholdChange={setConfidenceThreshold}
                   cameraStatus={cameraStatus}
                   isStable={isPredictionStable}
                   heuristicGesture={heuristicGesture}

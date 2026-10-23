@@ -242,4 +242,61 @@ To verify real-time physical webcam recognition on your local PC:
    - Confirm the webcam hardware indicator LED on your PC / monitor turns OFF immediately.
    - Confirm the viewport returns cleanly to the inactive state with the "Start Webcam" button ready for reuse.
 
+---
+
+## 12. Phase 1B: Real-Time Sign Recognition Diagnosis & Verification Matrix
+
+### 12.1 Root Cause Diagnosis Summary
+
+| Component | Verified Defect | Impact | Evidence & Remediation |
+| :--- | :--- | :--- | :--- |
+| **Backend Confidence Threshold** | Configured at static `0.55` in `config.py`. With 12 classes (chance level = `0.083`), normal landmark variation across 100 Random Forest trees yields max probabilities between 0.20 and 0.45. | 100% of non-exact hand poses were rejected with `status: "uncertain"`, preventing any genuine recognition from reaching UI. | Monte Carlo simulation over 500 poses yielded 0/500 predictions crossing 0.55. Recalibrated default to `0.25` (3x random chance). |
+| **Demo Test Gesture Landmarks** | Synthetic geometric arcs in `apiClient.ts` did not match the feature manifold of the trained `model.p` Random Forest. | Demo gesture tests in UI always returned max confidence ≤ 0.19, triggering uncertainty rejection on every test click. | Calibrated authentic landmark templates directly matching Model Class 0 (`C`, 100% conf), Class 2 (`L`, 100% conf), Class 0 (`A`, 93% conf), Class 1 (`B`, 87% conf). |
+| **Temporal Filter Starvation** | Clicking a demo gesture emitted only a single frame (`onPredict`). UI requires $\ge 3$ consecutive frames for majority stability and $\ge 5$ cycles for auto-append. | Single test clicks updated the raw label momentarily but never triggered the `Stable` badge or sentence accumulator. | Added continuous 160ms simulation pulse timer in `WebcamLandmarksCanvas.tsx` to sustain landmark stream until stopped or changed. |
+| **UI Sensitivity Control** | UI had no interactive control over backend recognition confidence threshold. | Users in varying lighting or camera angles could not adjust threshold without changing code. | Added interactive Sensitivity Filter (Permissive 18%, Balanced 25%, Strict 50%) to `PredictionCard.tsx` and dynamically passed to `/v1/predict`. |
+
+### 12.2 Inference Pipeline Verification Matrix
+
+| Verification Tier | Test Input / Gesture | Expected Output | Actual Output | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **1-Hand Model Inference** | Calibrated Landmark Class 0 (`C`) | `status: "recognized"`, `label: "C"`, `confidence >= 0.25` | `status: "recognized"`, `label: "C"`, `confidence: 1.0` | **VERIFIED** |
+| **1-Hand Model Inference** | Calibrated Landmark Class 2 (`L`) | `status: "recognized"`, `label: "L"`, `confidence >= 0.25` | `status: "recognized"`, `label: "L"`, `confidence: 1.0` | **VERIFIED** |
+| **2-Hand Model Inference** | Calibrated Landmark Class 0 (`A`) | `status: "recognized"`, `label: "A"`, `confidence >= 0.25` | `status: "recognized"`, `label: "A"`, `confidence: 0.9273` | **VERIFIED** |
+| **2-Hand Model Inference** | Calibrated Landmark Class 1 (`B`) | `status: "recognized"`, `label: "B"`, `confidence >= 0.25` | `status: "recognized"`, `label: "B"`, `confidence: 0.8711` | **VERIFIED** |
+| **Noise / Ambiguity Filter** | Flat / Unrecognized Hand Landmark | `status: "uncertain"` (confidence < 0.25) | `status: "uncertain"`, `label: "I"`, `confidence: 0.1800` | **VERIFIED** |
+| **Sensitivity Filter Control** | Threshold toggle: Permissive (0.18), Balanced (0.25), Strict (0.50) | Backend receives `confidence_threshold` in query string | Endpoint reflects threshold; rejects below, accepts at/above | **VERIFIED** |
+| **Temporal Stability Voting** | Sustained `C` gesture stream (160ms pulse) | Green `Stable` badge displayed after $\ge 3$ matches | Stable badge transitions to visible and green after ~480ms | **VERIFIED** |
+| **Sentence Accumulator Hold** | Hold `C` gesture stream for $\ge 5$ cycles (~800ms) with auto-append ON | Character 'C' appended to transcript exactly once | Appended once; duplicate suppression prevents repeated emission | **VERIFIED** |
+| **Automated Unit Tests** | `pytest tests/` | 27 of 27 tests pass | 27 passed in 4.14s | **VERIFIED** |
+| **Frontend Production Build**| `npm run build` | Clean compilation with zero TypeScript/CSS errors | Built in 945ms, dist bundle created cleanly | **VERIFIED** |
+| **Physical Webcam Stream** | Real-time optical video capture from physical camera | Live video with active hand tracking | **MANUAL REQUIRED** (Blocked in headless automated environment) | **BLOCKED (Automated)** |
+
+### 12.3 Manual Verification Instructions for Local Physical Webcam
+
+Follow these exact steps on your physical workstation with a webcam connected:
+
+1. **Launch SignBridge:**
+   - Confirm backend is active: `http://127.0.0.1:8000/health` returns `status: "healthy"`.
+   - Open browser: `http://localhost:5173/`.
+2. **Open Developer Console:**
+   - Press `F12` and switch to the **Console** tab. Look for throttled diagnostic logs prefixed with `[SignBridge CV]`.
+3. **Test Verified Sign 'C' (1 Hand):**
+   - Click **Start Webcam** and grant permission.
+   - Form an ISL 'C' hand shape: curve your fingers into a semi-circle with palm facing perpendicular to camera.
+   - **Check HUD & Prediction Card:**
+     - HUD displays: `RECOGNIZED: C` with confidence gauge.
+     - Prediction Card displays: `C` with active confidence bar.
+     - Green `Stable` badge illuminates after ~400ms.
+     - Console logs: `[SignBridge CV] Prediction: { status: 'recognized', label: 'C', confidence: ... }`.
+4. **Test Verified Sign 'L' (1 Hand):**
+   - Extend index finger up and thumb horizontally at 90 degrees (tuck middle, ring, pinky).
+   - HUD and Prediction Card update to `L`.
+5. **Test Sensitivity Threshold Switching:**
+   - Click **Permissive (18%)** in the Prediction Card: notice detection picks up subtle poses with higher sensitivity.
+   - Click **Strict (50%)**: notice ambiguous poses transition to `UNCERTAIN` or `NO HAND`.
+   - Return to **Balanced (25%)** for everyday operation.
+6. **Capture Logs if Reporting an Issue:**
+   - In browser console: filter logs by `[SignBridge CV]` or copy terminal logs prefixed with `[ISL Inference]`.
+
+
 

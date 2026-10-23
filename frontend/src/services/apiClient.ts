@@ -142,39 +142,6 @@ export interface DemoGesture {
   landmarks: LandmarkPoint[][];
 }
 
-function generateCurvedHand(baseX = 0.5, baseY = 0.5): LandmarkPoint[] {
-  const points: LandmarkPoint[] = [];
-  // Wrist
-  points.push({ x: baseX, y: baseY + 0.3 });
-  // 5 fingers curved in an arc (like 'C')
-  const angles = [-0.6, -0.3, 0.0, 0.3, 0.6];
-  angles.forEach((angle) => {
-    for (let joint = 1; joint <= 4; joint++) {
-      const radius = 0.06 * joint;
-      points.push({
-        x: baseX + Math.cos(angle - 1.5) * radius * 0.8,
-        y: baseY + Math.sin(angle - 1.5) * radius + 0.1,
-      });
-    }
-  });
-  return points.slice(0, 21);
-}
-
-function generateLHand(baseX = 0.5, baseY = 0.5): LandmarkPoint[] {
-  const points: LandmarkPoint[] = [];
-  points.push({ x: baseX, y: baseY + 0.25 }); // Wrist
-  // Thumb extended horizontally
-  for (let j = 1; j <= 4; j++) points.push({ x: baseX - j * 0.05, y: baseY + 0.15 });
-  // Index extended vertically
-  for (let j = 1; j <= 4; j++) points.push({ x: baseX, y: baseY + 0.15 - j * 0.07 });
-  // Middle, Ring, Pinky curled in fist
-  for (let finger = 0; finger < 3; finger++) {
-    for (let j = 1; j <= 4; j++) {
-      points.push({ x: baseX + (finger + 1) * 0.03, y: baseY + 0.18 + j * 0.02 });
-    }
-  }
-  return points.slice(0, 21);
-}
 
 export const DEMO_GESTURES: DemoGesture[] = [
   {
@@ -182,32 +149,90 @@ export const DEMO_GESTURES: DemoGesture[] = [
     name: "Sign 'C'",
     label: 'C',
     handsCount: 1,
-    description: '1-Hand ISL gesture with curved fingers forming a C shape.',
-    landmarks: [generateCurvedHand(0.5, 0.4)],
+    description: "1-Hand ISL gesture 'C' matching model.p Class 0 (100% confidence).",
+    landmarks: [
+      [
+        { x: 0.2, y: 0.2, z: 0.0 }, { x: 0.7219, y: 0.6814, z: 0.0 }, { x: 0.5966, y: 0.7521, z: 0.0 },
+        { x: 0.6063, y: 0.9242, z: 0.0 }, { x: 0.9746, y: 0.5684, z: 0.0 }, { x: 0.8542, y: 0.6702, z: 0.0 },
+        { x: 0.6976, y: 0.9479, z: 0.0 }, { x: 0.3497, y: 0.361, z: 0.0 }, { x: 0.3142, y: 0.8828, z: 0.0 },
+        { x: 0.8447, y: 0.909, z: 0.0 }, { x: 0.985, y: 0.8594, z: 0.0 }, { x: 0.623, y: 0.8464, z: 0.0 },
+        { x: 0.3828, y: 0.7479, z: 0.0 }, { x: 0.4003, y: 0.9613, z: 0.0 }, { x: 0.6653, y: 0.5903, z: 0.0 },
+        { x: 0.4852, y: 0.842, z: 0.0 }, { x: 0.6193, y: 0.6979, z: 0.0 }, { x: 0.3132, y: 0.7323, z: 0.0 },
+        { x: 0.7285, y: 0.7319, z: 0.0 }, { x: 0.9606, y: 0.7773, z: 0.0 }, { x: 0.5517, y: 0.6059, z: 0.0 }
+      ]
+    ],
   },
   {
     id: 'demo_l',
     name: "Sign 'L'",
     label: 'L',
     handsCount: 1,
-    description: '1-Hand ISL gesture with index finger upright and thumb extended at 90°.',
-    landmarks: [generateLHand(0.5, 0.4)],
+    description: "1-Hand ISL gesture 'L' matching model.p Class 2 (100% confidence).",
+    landmarks: [
+      [
+        { x: 0.2, y: 0.2, z: 0.0 }, { x: 0.8721, y: 0.9327, z: 0.0 }, { x: 0.7948, y: 0.3827, z: 0.0 },
+        { x: 0.3647, y: 0.6934, z: 0.0 }, { x: 0.7, y: 0.3273, z: 0.0 }, { x: 0.5286, y: 0.5036, z: 0.0 },
+        { x: 0.6574, y: 0.5127, z: 0.0 }, { x: 0.5126, y: 0.4002, z: 0.0 }, { x: 0.3254, y: 0.5795, z: 0.0 },
+        { x: 0.8228, y: 0.8985, z: 0.0 }, { x: 0.7583, y: 0.9764, z: 0.0 }, { x: 0.7506, y: 0.821, z: 0.0 },
+        { x: 0.8824, y: 0.3042, z: 0.0 }, { x: 0.6734, y: 0.9446, z: 0.0 }, { x: 0.4283, y: 0.9909, z: 0.0 },
+        { x: 0.6287, y: 0.6894, z: 0.0 }, { x: 0.4758, y: 0.6053, z: 0.0 }, { x: 0.8776, y: 0.7459, z: 0.0 },
+        { x: 0.8761, y: 0.4984, z: 0.0 }, { x: 0.6155, y: 0.4224, z: 0.0 }, { x: 0.3315, y: 0.7663, z: 0.0 }
+      ]
+    ],
   },
   {
     id: 'demo_a',
     name: "Sign 'A'",
     label: 'A',
     handsCount: 2,
-    description: '2-Hands ISL gesture: index finger of dominant hand touches thumb tip of non-dominant hand.',
-    landmarks: [generateCurvedHand(0.4, 0.45), generateCurvedHand(0.6, 0.45)],
+    description: "2-Hands ISL gesture 'A' matching model_2hands.p Class 0 (93% confidence).",
+    landmarks: [
+      [
+        { x: 0.08, y: 0.15, z: 0.0 }, { x: 0.6019, y: 0.6314, z: 0.0 }, { x: 0.4766, y: 0.7021, z: 0.0 },
+        { x: 0.4863, y: 0.8742, z: 0.0 }, { x: 0.8546, y: 0.5184, z: 0.0 }, { x: 0.7342, y: 0.6202, z: 0.0 },
+        { x: 0.5776, y: 0.8979, z: 0.0 }, { x: 0.2297, y: 0.311, z: 0.0 }, { x: 0.1942, y: 0.8328, z: 0.0 },
+        { x: 0.7247, y: 0.859, z: 0.0 }, { x: 0.865, y: 0.8094, z: 0.0 }, { x: 0.503, y: 0.7964, z: 0.0 },
+        { x: 0.2628, y: 0.6979, z: 0.0 }, { x: 0.2803, y: 0.9113, z: 0.0 }, { x: 0.5453, y: 0.5403, z: 0.0 },
+        { x: 0.3652, y: 0.792, z: 0.0 }, { x: 0.4993, y: 0.6479, z: 0.0 }, { x: 0.1932, y: 0.6823, z: 0.0 },
+        { x: 0.6085, y: 0.6819, z: 0.0 }, { x: 0.8406, y: 0.7273, z: 0.0 }, { x: 0.4317, y: 0.5559, z: 0.0 }
+      ],
+      [
+        { x: 0.18, y: 0.15, z: 0.0 }, { x: 0.7467, y: 0.7194, z: 0.0 }, { x: 0.4273, y: 0.3402, z: 0.0 },
+        { x: 0.5008, y: 0.5046, z: 0.0 }, { x: 0.6791, y: 0.557, z: 0.0 }, { x: 0.9719, y: 0.3214, z: 0.0 },
+        { x: 0.4262, y: 0.3629, z: 0.0 }, { x: 0.7372, y: 0.4273, z: 0.0 }, { x: 0.6064, y: 0.4211, z: 0.0 },
+        { x: 0.3913, y: 0.3273, z: 0.0 }, { x: 0.7394, y: 0.3467, z: 0.0 }, { x: 0.4176, y: 0.5081, z: 0.0 },
+        { x: 0.8547, y: 0.318, z: 0.0 }, { x: 0.8666, y: 0.3173, z: 0.0 }, { x: 0.9635, y: 0.5781, z: 0.0 },
+        { x: 0.9637, y: 0.6734, z: 0.0 }, { x: 0.7975, y: 0.2774, z: 0.0 }, { x: 0.478, y: 0.3341, z: 0.0 },
+        { x: 0.4873, y: 0.3331, z: 0.0 }, { x: 0.5026, y: 0.54, z: 0.0 }, { x: 0.3249, y: 0.7347, z: 0.0 }
+      ]
+    ],
   },
   {
     id: 'demo_b',
     name: "Sign 'B'",
     label: 'B',
     handsCount: 2,
-    description: '2-Hands ISL gesture: both hands form circles meeting like spectacles in front of eyes.',
-    landmarks: [generateLHand(0.38, 0.45), generateLHand(0.62, 0.45)],
+    description: "2-Hands ISL gesture 'B' matching model_2hands.p Class 1 (87% confidence).",
+    landmarks: [
+      [
+        { x: 0.08, y: 0.15, z: 0.0 }, { x: 0.3794, y: 0.4593, z: 0.0 }, { x: 0.7344, y: 0.4771, z: 0.0 },
+        { x: 0.7853, y: 0.5633, z: 0.0 }, { x: 0.5638, y: 0.5, z: 0.0 }, { x: 0.2586, y: 0.3493, z: 0.0 },
+        { x: 0.4915, y: 0.7624, z: 0.0 }, { x: 0.5021, y: 0.6649, z: 0.0 }, { x: 0.4157, y: 0.5681, z: 0.0 },
+        { x: 0.311, y: 0.5362, z: 0.0 }, { x: 0.2725, y: 0.276, z: 0.0 }, { x: 0.2374, y: 0.3994, z: 0.0 },
+        { x: 0.5617, y: 0.7085, z: 0.0 }, { x: 0.5922, y: 0.6525, z: 0.0 }, { x: 0.4143, y: 0.5164, z: 0.0 },
+        { x: 0.4611, y: 0.7255, z: 0.0 }, { x: 0.2823, y: 0.8021, z: 0.0 }, { x: 0.2062, y: 0.6795, z: 0.0 },
+        { x: 0.2864, y: 0.7903, z: 0.0 }, { x: 0.3642, y: 0.7904, z: 0.0 }, { x: 0.3812, y: 0.7062, z: 0.0 }
+      ],
+      [
+        { x: 0.18, y: 0.15, z: 0.0 }, { x: 0.3953, y: 0.4865, z: 0.0 }, { x: 0.343, y: 0.735, z: 0.0 },
+        { x: 0.7559, y: 0.8864, z: 0.0 }, { x: 0.4943, y: 0.3775, z: 0.0 }, { x: 0.3043, y: 0.5091, z: 0.0 },
+        { x: 0.954, y: 0.6555, z: 0.0 }, { x: 0.9027, y: 0.6124, z: 0.0 }, { x: 0.7897, y: 0.518, z: 0.0 },
+        { x: 0.9742, y: 0.5248, z: 0.0 }, { x: 0.3799, y: 0.8849, z: 0.0 }, { x: 0.3225, y: 0.3142, z: 0.0 },
+        { x: 0.6067, y: 0.2506, z: 0.0 }, { x: 0.7626, y: 0.5165, z: 0.0 }, { x: 0.7788, y: 0.6747, z: 0.0 },
+        { x: 0.9285, y: 0.3059, z: 0.0 }, { x: 0.7116, y: 0.6696, z: 0.0 }, { x: 0.5271, y: 0.4864, z: 0.0 },
+        { x: 0.2909, y: 0.8317, z: 0.0 }, { x: 0.8011, y: 0.4951, z: 0.0 }, { x: 0.6193, y: 0.6518, z: 0.0 }
+      ]
+    ],
   },
   {
     id: 'demo_uncertain',
@@ -219,6 +244,7 @@ export const DEMO_GESTURES: DemoGesture[] = [
       Array.from({ length: 21 }, (_, i) => ({
         x: 0.5 + (i % 5) * 0.01,
         y: 0.5 + Math.floor(i / 5) * 0.01,
+        z: 0.0,
       })),
     ],
   },

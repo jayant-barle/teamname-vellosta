@@ -26,6 +26,7 @@ interface PredictionCardProps {
   prediction: PredictResponse | null;
   onAppendChar: (char: string) => void;
   confidenceThreshold: number;
+  onThresholdChange?: (val: number) => void;
   cameraStatus?: CameraStatus;
   isStable?: boolean;
   heuristicGesture?: string | null;
@@ -35,6 +36,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   prediction,
   onAppendChar,
   confidenceThreshold,
+  onThresholdChange,
   cameraStatus = 'idle',
   isStable = false,
   heuristicGesture = null,
@@ -233,6 +235,33 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         {isUncertain && (
           <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-300 leading-snug">
             Gesture confidence ({confidencePercent}%) is below the {Math.round(confidenceThreshold * 100)}% rejection threshold. Hold hand steady in good lighting.
+          </div>
+        )}
+
+        {/* Sensitivity / Rejection Threshold Controls */}
+        {onThresholdChange && (
+          <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-slate-400 flex-wrap gap-1">
+            <span>Filter Sensitivity:</span>
+            <div className="flex items-center gap-1">
+              {[
+                { label: 'Permissive (18%)', val: 0.18 },
+                { label: 'Balanced (25%)', val: 0.25 },
+                { label: 'Strict (50%)', val: 0.5 },
+              ].map((opt) => (
+                <button
+                  key={opt.val}
+                  type="button"
+                  onClick={() => onThresholdChange(opt.val)}
+                  className={`px-2 py-0.5 rounded text-[10px] transition-colors ${
+                    Math.abs(confidenceThreshold - opt.val) < 0.03
+                      ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-semibold'
+                      : 'bg-white/5 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

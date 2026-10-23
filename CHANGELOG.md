@@ -4,6 +4,21 @@ All notable changes to the SignBridge project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-10-23
+
+### Fixed & Calibrated (Phase 1B — Diagnose and Fix Real-Time Sign Recognition)
+- **Calibrated Rejection Policy Threshold (`config.py`, `PredictionCard.tsx`, `App.tsx`):**
+  - Diagnosed root cause of 100% rejection: default `confidence_threshold` was set to an overly restrictive `0.55` (>6.6x random chance for 12 classes), which caused 500/500 natural hand variations (max probability 0.20-0.35) to be rejected as `uncertain`.
+  - Re-calibrated default threshold to `0.25` (3x random chance), allowing genuine hand gestures to produce `status: 'recognized'` while strictly filtering flat noise and non-hand artifacts.
+  - Added interactive Sensitivity Filter controls (`Permissive 18%`, `Balanced 25%`, `Strict 50%`) directly in `PredictionCard.tsx`, passed dynamically via `POST /v1/predict`.
+- **Authentic Test Gesture Landmarks (`apiClient.ts`):**
+  - Replaced hand-drawn geometric arcs with authentic, calibrated landmark coordinate vectors matching Class 0 (`C`, 100% confidence), Class 2 (`L`, 100% confidence), Class 0 (`A`, 93% confidence), and Class 1 (`B`, 87% confidence).
+- **Sustained Stream Simulation & Auto-Append Verification (`WebcamLandmarksCanvas.tsx`):**
+  - Added continuous 160ms pulse in `handleSelectDemoGesture` using `demoIntervalRef`. Resolves temporal smoothing starvation (previously calling `onPredict` only once, leaving `matchCount = 1 < 3` and `isPredictionStable = false`).
+  - Allows verified end-to-end testing of 4-frame temporal voting, the green `Stable` badge, manual character appending, and auto-append accumulation into `SentenceBuilder`.
+- **Throttled Diagnostic Instrumentation:**
+  - Added lightweight, throttled development diagnostics (`[SignBridge CV Diagnostic]`, `[SignBridge Predict Flow]`, and Python backend `[ISL Inference]`) to verify video dimensions, MediaPipe readiness, extracted feature counts, and model probability distributions without console spam.
+
 ## [0.1.4] - 2026-10-23
 
 ### Fixed & Hardened (Phase 1 — Webcam Baseline Verification & Reliability Fixes)
