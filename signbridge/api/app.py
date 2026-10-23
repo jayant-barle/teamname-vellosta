@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from signbridge import __version__
 from signbridge.api.routes import router, get_inference_service
-from signbridge.config import settings
+from signbridge.config import settings, PROJECT_ROOT
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,6 +39,16 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+# Mount ISL Video clips static files
+isl_clips_dir = PROJECT_ROOT / "frontend" / "public" / "isl_clips"
+if isl_clips_dir.exists():
+    app.mount("/isl_clips", StaticFiles(directory=str(isl_clips_dir)), name="isl_clips")
+
+# Mount frontend production build if present
+frontend_dist = PROJECT_ROOT / "frontend" / "dist"
+if frontend_dist.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dist), html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

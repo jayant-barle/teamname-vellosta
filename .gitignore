@@ -6,3 +6,5 @@ __pycache__/
 *.png
 *.pyc
 data/
+node_modules/
+.pytest_cache/
