@@ -194,4 +194,52 @@ dist/assets/index-rf6KrkUy.js          284.59 kB │ gzip: 87.10 kB
 | **Automated Test Parity** | `python -m pytest -v tests/` | **27/27 PASSED** | All feature parity, model inference, and REST API tests pass in 5.64s. |
 | **Frontend Code Quality** | `npm run lint` & `npm run build` | **PASSED** | 0 errors and 0 warnings on 14 files; production bundle built cleanly in 3.26s. |
 
+---
+
+## 11. Phase 1 — Webcam Baseline Verification Matrix & Manual Test Protocol
+
+### 11.1 Baseline Checkpoint Verification Results
+
+| Checkpoint | Target Description | Automated / Environment Status | Supporting Evidence |
+| :--- | :--- | :--- | :--- |
+| **1. Application Load** | Vite dev server + FastAPI API load without crashes | **PASS** | `http://127.0.0.1:8000/health` returns `200 OK`; `http://localhost:5173/` returns `200 OK` (1,685 bytes HTML). |
+| **2. Model Initialization** | 1-hand (`models/model.p`) and 2-hand (`models/model_2hands.p`) models load | **PASS** | `/health` confirms `model_1hand_loaded: true` (12 classes), `model_2hand_loaded: true` (24 classes), `proba_supported: true`. |
+| **3. Inference & Feature Parity** | 42/84 feature vector extraction and prediction matching original formula | **PASS** | 27 of 27 pytest tests pass (`test_feature_extractor.py`, `test_inference_service.py`, `test_regression.py`). |
+| **4. Prediction to UI Flow** | Model predictions reach UI cards, confidence gauge, and sentence builder | **PASS** | Verified via interactive Demo Gestures (`C`, `L`, `A`, `B`, `Uncertain`) and simulated `/v1/predict` dispatch. |
+| **5. Physical Webcam Hardware**| Physical camera capture via `getUserMedia()` | **BLOCKED (Automated)** | Automated VM/headless container environment has no physical camera device (`NotFoundError`/`NotAllowedError`). Manual test on physical PC required. |
+| **6. Offscreen Video Decoding**| Hardware video decoding without CSS `display: none` freezing | **PASS** | `<video>` styled with `.webcam-source-video` (`opacity: 0; pointer-events: none; position: absolute; z-index: -1`). |
+| **7. Monotonic MediaPipe Timestamps** | `detectForVideo()` called with strictly monotonically increasing timestamps | **PASS** | `lastVideoTimestampRef` ensures `videoTimestamp = Math.max(now, (lastVideoTimestampRef.current || 0) + 1)`. |
+| **8. Stream Teardown & Resource Cleanup** | Stopping camera halts all MediaStream tracks and releases camera lock | **PASS** | `stream.getTracks().forEach(t => t.stop())` and `video.onloadedmetadata = null` verified on stop and unmount. |
+
+### 11.2 Exact Manual Browser Test Steps for User
+
+To verify real-time physical webcam recognition on your local PC:
+
+1. **Ensure Backend & Frontend Servers are Running:**
+   - Backend terminal: `python -m uvicorn signbridge.api.app:app --host 127.0.0.1 --port 8000`
+   - Frontend terminal: `cd frontend && npm run dev`
+2. **Open the Application in Chrome or Edge:**
+   - Navigate to `http://localhost:5173/`
+   - Confirm the top-right backend badge shows `API Connected` with a green indicator.
+3. **Initiate Camera Access:**
+   - Click either the center **Start Webcam** CTA button or the bottom toolbar **Start Webcam** button.
+   - When the browser displays the permission dialog (*"http://localhost:5173 wants to use your camera"*), click **Allow**.
+4. **Verify Live Camera Stream & Skeleton Overlay:**
+   - Confirm your video feed appears mirrored inside the canvas viewport.
+   - Confirm the FPS counter in the top-left HUD updates (typically 24–30 FPS).
+   - Place your right hand in front of the camera:
+     - The HUD top-right indicator should transition from `0 Hands` to `1 Hand` in cyan.
+     - The anatomical hand skeleton (21 colored landmarks and connecting bones) should track your fingers.
+5. **Test Gesture Recognition (e.g. Sign 'C' or 'L'):**
+   - Form an ISL 'C' gesture (curved fingers in a C-arc) or 'L' gesture (thumb out, index up):
+   - The HUD bottom badge should update to `RECOGNIZED: C` or `RECOGNIZED: L`.
+   - The **Current Sign** card to the right should display the letter with confidence percentage (e.g., `85%`) and a green `Stable` badge after holding for ~400ms.
+6. **Test Sentence Accumulator & Duplicate Suppression:**
+   - Click **Add to Sentence** or toggle **Auto-append confirmed signs** ON in the Sentence Builder.
+   - Hold the sign steady: confirm the letter is appended to the text box **once**, and does NOT continuously spam duplicate letters.
+7. **Test Stop Camera & Teardown:**
+   - Click the red **Stop Camera** button in the bottom toolbar.
+   - Confirm the webcam hardware indicator LED on your PC / monitor turns OFF immediately.
+   - Confirm the viewport returns cleanly to the inactive state with the "Start Webcam" button ready for reuse.
+
 

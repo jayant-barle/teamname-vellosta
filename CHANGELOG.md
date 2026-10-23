@@ -4,6 +4,20 @@ All notable changes to the SignBridge project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-10-23
+
+### Fixed & Hardened (Phase 1 — Webcam Baseline Verification & Reliability Fixes)
+- **Offscreen Video Hardware Decoding (`WebcamLandmarksCanvas.tsx`, `index.css`):**
+  - Replaced `className="hidden"` (`display: none !important`) on the HTML5 `<video>` feed with `.webcam-source-video` (`opacity: 0; pointer-events: none; position: absolute`). Eliminates browser-level hardware decoder freezing where `display: none` leaves `videoWidth/videoHeight` at 0 or halts `readyState` progression.
+- **MediaPipe Strictly Monotonic Timestamps (`WebcamLandmarksCanvas.tsx`):**
+  - Implemented `lastVideoTimestampRef` to guarantee that timestamps passed to MediaPipe `detectForVideo(video, timestamp)` are strictly monotonically increasing, preventing timestamp reversion errors during rapid frame intervals.
+- **Model Training Feature Representation Preservation (`WebcamLandmarksCanvas.tsx`):**
+  - Separated raw MediaPipe landmarks (`rawHands`) from screen-mirrored landmarks (`displayHands`). Feature extraction and backend model inference (`/v1/predict`) now strictly consume `rawHands`, protecting the original Random Forest coordinate distribution from horizontal coordinate reflection while preserving mirrored screen skeleton alignment.
+- **Robust Stream Lifecycle & Event Handlers (`WebcamLandmarksCanvas.tsx`):**
+  - Added synchronous `video.readyState >= 1` check with fallback `onloadedmetadata` event listener in `startCamera()`, preventing deadlocks when media metadata is already buffered.
+  - Hardened `stopCamera()` teardown to explicitly clear `onloadedmetadata`, release all MediaStream hardware tracks, reset animation frames, and clear in-flight inference mutex locks.
+  - Guarded canvas resizing against zero-dimension frames.
+
 ## [0.1.3] - 2026-10-23
 
 ### Added & Integrated (Selective Integration from Warlord-06/teamname-vellosta)

@@ -55,6 +55,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   const landmarkerRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastInferenceTimeRef = useRef<number>(0);
+  const lastVideoTimestampRef = useRef<number>(-1);
   const frameCountRef = useRef<number>(0);
   const lastFpsTimeRef = useRef<number>(0);
   const processFrameRef = useRef<() => void>(() => {});
@@ -136,16 +137,19 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
 
   // Stop Camera & Release Resources
   const stopCamera = useCallback(() => {
-    if (videoRef.current?.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch {
-          // Ignore stop errors
-        }
-      });
-      videoRef.current.srcObject = null;
+    if (videoRef.current) {
+      videoRef.current.onloadedmetadata = null;
+      if (videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {
+            // Ignore stop errors
+          }
+        });
+        videoRef.current.srcObject = null;
+      }
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -156,6 +160,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     setDetectedHands(0);
     hadHandsRef.current = false;
     inFlightRef.current = false;
+    lastVideoTimestampRef.current = -1;
     setHeuristicGesture(null);
     if (onHeuristicGesture) onHeuristicGesture(null);
     updateStatus('idle');
@@ -176,10 +181,13 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     updateStatus('initializing');
 
     // Stop current stream if switching devices
-    if (videoRef.current?.srcObject) {
-      const currentStream = videoRef.current.srcObject as MediaStream;
-      currentStream.getTracks().forEach((t) => t.stop());
-      videoRef.current.srcObject = null;
+    if (videoRef.current) {
+      videoRef.current.onloadedmetadata = null;
+      if (videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach((t) => t.stop());
+        videoRef.current.srcObject = null;
+      }
     }
 
     try {
@@ -196,18 +204,27 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.onloadedmetadata = () => {
-          videoRef.current?.play().then(() => {
-            setCameraActive(true);
-            setIsInitializing(false);
-            updateStatus('no_hand');
-          }).catch(() => {
-            setCameraActive(true);
-            setIsInitializing(false);
-            updateStatus('no_hand');
-          });
+        const video = videoRef.current;
+        video.srcObject = stream;
+
+        const handleReady = () => {
+          video
+            .play()
+            .catch((playErr) => {
+              console.warn('Camera video play notice:', playErr);
+            })
+            .finally(() => {
+              setCameraActive(true);
+              setIsInitializing(false);
+              updateStatus('no_hand');
+            });
         };
+
+        if (video.readyState >= 1) {
+          handleReady();
+        } else {
+          video.onloadedmetadata = handleReady;
+        }
       }
     } catch (err: any) {
       console.error('Camera initialization error:', err);
@@ -239,9 +256,11 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
     }
 
     // Render video on canvas with optional mirror toggle
@@ -255,9 +274,13 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 
-    // FPS calculation using animation frame timestamp
+    // Monotonic timestamp calculation for MediaPipe detectForVideo
+    const now = performance.now();
+    const videoTimestamp = Math.max(now, (lastVideoTimestampRef.current || 0) + 1);
+    lastVideoTimestampRef.current = videoTimestamp;
+
+    // FPS calculation
     frameCountRef.current++;
-    const now = typeof document !== 'undefined' ? (document.timeline?.currentTime as number || performance.now()) : performance.now();
     if (lastFpsTimeRef.current === 0) {
       lastFpsTimeRef.current = now;
     } else if (now - lastFpsTimeRef.current >= 1000) {
@@ -266,33 +289,44 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       lastFpsTimeRef.current = now;
     }
 
-    let extractedHands: LandmarkPoint[][] = [];
+    let rawHands: LandmarkPoint[][] = [];
+    let displayHands: LandmarkPoint[][] = [];
 
     // Run MediaPipe detector if loaded
     if (landmarkerRef.current) {
       try {
-        const results = landmarkerRef.current.detectForVideo(video, now);
+        const results = landmarkerRef.current.detectForVideo(video, videoTimestamp);
         if (results?.landmarks && results.landmarks.length > 0) {
-          // Adjust X coordinate based on mirror setting
-          extractedHands = results.landmarks.map((hand: any[]) =>
+          rawHands = results.landmarks.map((hand: any[]) =>
             hand.map((p) => ({
-              x: isMirrored ? 1.0 - p.x : p.x,
+              x: p.x,
               y: p.y,
               z: p.z || 0.0,
             }))
           );
+
+          // For on-screen mirrored skeleton rendering, flip X coordinate
+          displayHands = isMirrored
+            ? rawHands.map((hand) =>
+                hand.map((p) => ({
+                  x: 1.0 - p.x,
+                  y: p.y,
+                  z: p.z,
+                }))
+              )
+            : rawHands;
         }
-      } catch {
-        // Fallback gracefully
+      } catch (detectorErr) {
+        console.warn('Landmark detection warning:', detectorErr);
       }
     }
 
-    const handCount = extractedHands.length;
+    const handCount = rawHands.length;
     setDetectedHands(handCount);
 
-    // Evaluate client-side conversational heuristic (adapted from reference)
+    // Evaluate client-side conversational heuristic on raw hands
     if (handCount > 0) {
-      const heuristic = classifyConversationalHeuristic(extractedHands[0], extractedHands);
+      const heuristic = classifyConversationalHeuristic(rawHands[0], rawHands);
       const hName = heuristic?.name || null;
       setHeuristicGesture(hName);
       if (onHeuristicGesture) onHeuristicGesture(hName);
@@ -301,9 +335,9 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
       if (onHeuristicGesture) onHeuristicGesture(null);
     }
 
-    // Draw anatomical skeleton & bounding box using adapted utility
+    // Draw anatomical skeleton & bounding box using displayHands for mirror alignment
     if (handCount > 0 && showSkeleton) {
-      renderHandsOnCanvas(ctx, extractedHands, canvas.width, canvas.height, {
+      renderHandsOnCanvas(ctx, displayHands, canvas.width, canvas.height, {
         showSkeleton: true,
         showBoundingBox: true,
         activeLabel:
@@ -318,6 +352,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     }
 
     // Throttled prediction loop (every 120ms ~ 8 FPS) with in-flight and parent state lock
+    // Always extracts authentic features from rawHands to preserve model training distribution
     if (now - lastInferenceTimeRef.current > 120 && !inFlightRef.current && !isPredicting) {
       if (handCount > 0) {
         hadHandsRef.current = true;
@@ -325,8 +360,8 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         lastInferenceTimeRef.current = now;
         updateStatus('detecting');
 
-        const features = extractFeaturesFromLandmarks(extractedHands);
-        onPredict(features, extractedHands)
+        const features = extractFeaturesFromLandmarks(rawHands);
+        onPredict(features, rawHands)
           .then((res) => {
             if (res) {
               if (res.status === 'recognized') {
@@ -432,8 +467,8 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     <div className="webcam-container">
       {/* Video & Canvas Aspect Box */}
       <div className="webcam-aspect-box">
-        {/* Hidden video element used as feed source */}
-        <video ref={videoRef} playsInline muted className="hidden" />
+        {/* Offscreen video element used as feed source (kept active for frame decoding) */}
+        <video ref={videoRef} playsInline muted className="webcam-source-video" />
 
         {/* Mirrored Canvas with Landmark Overlays */}
         <canvas ref={canvasRef} className="webcam-canvas" />
