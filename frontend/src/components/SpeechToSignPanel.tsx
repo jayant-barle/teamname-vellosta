@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Mic, MicOff, CheckCircle2, Send, Search } from 'lucide-react';
+import { Mic, MicOff, CheckCircle2, Send, Search, Film } from 'lucide-react';
 import type { PhraseItem } from '../services/apiClient';
 
 interface SpeechToSignPanelProps {
@@ -146,28 +146,25 @@ export const SpeechToSignPanel: React.FC<SpeechToSignPanelProps> = ({
   });
 
   return (
-    <div className="glass-panel p-6 flex flex-col justify-between h-full">
+    <div className="glass-panel speech-panel-box">
       {/* Header */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <Mic size={18} className="text-cyan-400" />
+            <Mic size={18} className="text-indigo-400" />
             <h3 className="text-base font-bold text-white">Speech-to-Sign Translation</h3>
           </div>
-          <span className="text-xs text-slate-400">Hearing Peer View</span>
+          <span className="text-xs text-slate-400 font-medium">Hearing Peer View</span>
         </div>
 
-        {/* Microphone and Search Input */}
-        <div className="relative mb-4">
-          <div className="flex items-center gap-2 bg-[#0b101d] rounded-xl p-2 border border-white/10 focus-within:border-cyan-500 transition-all">
+        {/* Microphone and Speech Input Bar */}
+        <div className="relative mb-3">
+          <div className="mic-input-wrapper">
             <button
               onClick={toggleListening}
-              className={`p-3 rounded-lg flex items-center justify-center transition-all ${
-                isListening
-                  ? 'bg-rose-500 text-white animate-pulse shadow-lg shadow-rose-500/30'
-                  : 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20'
-              }`}
+              className={`mic-toggle-btn ${isListening ? 'mic-btn-active' : 'mic-btn-idle'}`}
               title={isListening ? 'Stop microphone' : 'Start microphone speech input'}
+              aria-label={isListening ? 'Stop microphone' : 'Start microphone speech input'}
             >
               {isListening ? <MicOff size={18} /> : <Mic size={18} />}
             </button>
@@ -180,18 +177,19 @@ export const SpeechToSignPanel: React.FC<SpeechToSignPanelProps> = ({
                 if (e.key === 'Enter') handleSendToTimeline();
               }}
               placeholder={isListening ? 'Listening... Speak now...' : 'Speak into mic or type phrase...'}
-              className="w-full bg-transparent text-slate-100 px-3 py-1 text-sm focus:outline-none placeholder:text-slate-500"
+              className="speech-text-input"
+              aria-label="Speech Transcript Input"
             />
 
             {transcript && (
-              <>
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => {
                     setTranscript('');
                     onCustomWordChange('');
                   }}
-                  className="text-xs text-slate-500 hover:text-slate-300 px-1.5"
-                  title="Clear transcript input"
+                  className="text-xs text-slate-400 hover:text-slate-200 px-1.5"
+                  title="Clear input"
                 >
                   Clear
                 </button>
@@ -199,20 +197,20 @@ export const SpeechToSignPanel: React.FC<SpeechToSignPanelProps> = ({
                 {onSendMessage && (
                   <button
                     onClick={handleSendToTimeline}
-                    className="btn btn-primary text-xs py-1 px-2.5 shrink-0"
-                    title="Send phrase to conversation timeline"
+                    className="btn btn-primary btn-sm py-1 px-2.5"
+                    title="Send to conversation timeline"
                   >
                     <Send size={12} />
                     <span>Send</span>
                   </button>
                 )}
-              </>
+              </div>
             )}
           </div>
 
           {isListening && (
-            <div className="flex items-center gap-2 mt-2 px-1 text-xs text-rose-400 font-medium animate-pulse">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <div className="flex items-center gap-1.5 mt-2 px-1 text-xs text-rose-400 font-medium">
+              <span className="status-dot status-dot-offline animate-pulse" />
               <span>Microphone Active — Speak phrases like "Hello", "Thank you", "Help"...</span>
             </div>
           )}
@@ -224,85 +222,85 @@ export const SpeechToSignPanel: React.FC<SpeechToSignPanelProps> = ({
           )}
         </div>
 
-        {/* Category Filter Tabs & Search Bar */}
-        <div className="mb-3 space-y-2">
-          <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-            <span>Reviewed Everyday ISL Phrases</span>
-            <span className="text-[11px] text-cyan-400">{filteredPhrases.length} clips</span>
+        {/* Distinct Reviewed Everyday ISL Phrase Library Section */}
+        <div className="phrase-library-section">
+          <div className="phrase-library-header">
+            <div className="flex items-center gap-2">
+              <Film size={14} className="text-cyan-400" />
+              <h4 className="phrase-library-title">Reviewed Everyday ISL Phrase Library</h4>
+            </div>
+            <span className="badge badge-accent text-[11px] font-mono">{filteredPhrases.length} clips</span>
           </div>
 
-          {/* Search filter input */}
-          <div className="flex items-center gap-2 bg-slate-900/80 rounded-lg px-2.5 py-1.5 border border-white/5 text-xs text-slate-300">
+          {/* Search filter bar */}
+          <div className="phrase-search-bar">
             <Search size={13} className="text-slate-400 shrink-0" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Filter phrases (e.g. hello, help)..."
-              className="bg-transparent text-slate-100 w-full focus:outline-none text-xs placeholder:text-slate-500"
+              placeholder="Search phrases (e.g. hello, help)..."
+              className="phrase-search-input"
+              aria-label="Filter ISL phrases"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-[10px] text-slate-400">
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-xs text-slate-400 hover:text-white px-1"
+                aria-label="Clear phrase search"
+              >
                 ✕
               </button>
             )}
           </div>
 
           {/* Category Tabs */}
-          <div className="flex flex-wrap gap-1">
+          <div className="category-pills-row">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
-                  selectedCategory === cat
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                    : 'bg-slate-900/50 text-slate-400 hover:text-slate-200 border border-transparent'
-                }`}
+                className={`category-pill ${selectedCategory === cat ? 'category-pill-active' : ''}`}
               >
                 {cat}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Filtered Phrase Library Grid */}
-        <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
-          {filteredPhrases.length === 0 ? (
-            <div className="col-span-2 py-4 text-center text-xs text-slate-500">
-              No matching ISL phrases found for "{searchQuery}".
-            </div>
-          ) : (
-            filteredPhrases.map((item) => {
-              const isSelected = selectedPhrase?.id === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    onSelectPhrase(item);
-                    setTranscript(item.phrase);
-                    onCustomWordChange(item.phrase);
-                  }}
-                  className={`flex items-center justify-between p-2.5 rounded-lg border text-left transition-all ${
-                    isSelected
-                      ? 'bg-cyan-500/15 border-cyan-500 text-white shadow-md'
-                      : 'bg-slate-900/60 border-white/5 text-slate-300 hover:border-white/20 hover:bg-slate-900'
-                  }`}
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="text-xs font-semibold truncate">{item.phrase}</div>
-                    <div className="text-[10px] text-slate-400 truncate">{item.category}</div>
-                  </div>
-                  {isSelected && <CheckCircle2 size={14} className="text-cyan-400 shrink-0" />}
-                </button>
-              );
-            })
-          )}
+          {/* Filtered Phrase Library Grid */}
+          <div className="phrase-cards-grid">
+            {filteredPhrases.length === 0 ? (
+              <div className="col-span-2 py-4 text-center text-xs text-slate-500">
+                No matching ISL phrases found for "{searchQuery}".
+              </div>
+            ) : (
+              filteredPhrases.map((item) => {
+                const isSelected = selectedPhrase?.id === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onSelectPhrase(item);
+                      setTranscript(item.phrase);
+                      onCustomWordChange(item.phrase);
+                    }}
+                    className={`phrase-card-btn ${isSelected ? 'phrase-card-selected' : ''}`}
+                  >
+                    <div className="min-w-0 pr-2">
+                      <div className="text-xs font-semibold text-slate-100 truncate">{item.phrase}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{item.category}</div>
+                    </div>
+                    {isSelected && <CheckCircle2 size={14} className="text-cyan-400 shrink-0" />}
+                  </button>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-between">
-        <span>Certified Indian Sign Language video library.</span>
+      <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-between">
+        <span>Reviewed ISL demonstration video library.</span>
         {transcript && onSendMessage && (
           <button
             onClick={handleSendToTimeline}
@@ -316,3 +314,5 @@ export const SpeechToSignPanel: React.FC<SpeechToSignPanelProps> = ({
     </div>
   );
 };
+
+export default SpeechToSignPanel;

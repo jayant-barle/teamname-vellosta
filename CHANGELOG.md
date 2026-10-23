@@ -28,9 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `@media (prefers-reduced-motion: reduce)` in `App.css` to respect user accessibility preferences.
 
 ### Fixed
-- Resolved all 7 oxlint warnings across the frontend codebase (pure animation timestamps, named callbacks, clean effect dependencies); linter runs with **0 errors and 0 warnings**.
+- **Complete Frontend UI & Design System Overhaul:**
+  - Diagnosed root cause of unstyled layout: component markup used utility classes assuming an external Tailwind processor, but Vite was running standard CSS without Tailwind compiler dependencies.
+  - Implemented comprehensive 500+ line accessible Vanilla CSS design system in `frontend/src/index.css` and layout helper engine in `frontend/src/App.css`.
+  - Replaced browser-default form controls (inputs, textareas, selects, checkboxes) with cohesive dark-themed, focus-ringed inputs inheriting Outfit typography and crisp borders.
+  - Eliminated confusing duplicate "Start Webcam" / "Start Camera" buttons in `WebcamLandmarksCanvas.tsx`.
+  - Enforced strict 16:9 aspect-ratio constraints on webcam preview and `ISLVideoPlayer.tsx` with max-height bounds, eliminating large unexplained empty spaces and horizontal clipping.
+  - Upgraded Conversation Timeline with distinct message bubble cards for Deaf Communicator (ISL cyan) and Hearing Peer (Voice indigo), timestamp readouts, and clear action toolbars.
+  - Corrected wording across components to maintain strict truthfulness (replaced "certified" claims with "reviewed everyday phrase demonstration library").
+  - Fixed responsive breakpoints across 1440px desktop, 1024px laptop, 768px tablet, and 390px mobile viewports.
+- Resolved all 7 oxlint warnings across the frontend codebase; linter runs with **0 errors and 0 warnings**.
 - Fixed synchronous state update warnings during initial API polling.
-- Replaced unused Vite starter template rules in `App.css` with responsive utilities and mobile spacing.
 
 ## [0.1.0] - 2026-10-23
 

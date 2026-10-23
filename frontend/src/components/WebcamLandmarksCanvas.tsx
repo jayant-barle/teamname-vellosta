@@ -351,40 +351,41 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   };
 
   return (
-    <div className="relative flex flex-col items-center w-full">
-      {/* Video & Canvas Container */}
-      <div className="relative w-full aspect-video bg-[#0c1220] rounded-2xl overflow-hidden border border-white/10 shadow-xl">
+    <div className="webcam-container">
+      {/* Video & Canvas Aspect Box */}
+      <div className="webcam-aspect-box">
         {/* Hidden video element used as feed source */}
         <video ref={videoRef} playsInline muted className="hidden" />
 
         {/* Mirrored Canvas with Landmark Overlays */}
-        <canvas ref={canvasRef} className="w-full h-full object-cover" />
+        <canvas ref={canvasRef} className="webcam-canvas" />
 
         {/* Inactive State Screen */}
         {!cameraActive && !activeDemoGesture && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/60 backdrop-blur-sm">
-            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-cyan-400 shadow-lg shadow-cyan-500/10">
-              <Camera size={32} />
+          <div className="webcam-inactive-overlay">
+            <div className="webcam-inactive-icon">
+              <Camera size={28} />
             </div>
-            <h3 className="text-lg font-bold text-white mb-2">Webcam Recognition</h3>
-            <p className="text-sm text-slate-400 max-w-sm mb-6">
-              Start your webcam for real-time ISL recognition, or test demo gesture samples below without a camera.
+            <h3 className="text-base font-bold text-white mb-1">Live Webcam Recognition</h3>
+            <p className="text-xs text-slate-400 max-w-sm mb-4">
+              Start your camera for real-time ISL hand tracking, or test instant gesture samples below without a camera.
             </p>
-
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              <button onClick={() => startCamera()} className="btn btn-primary">
-                <Camera size={18} />
-                Start Webcam
-              </button>
-            </div>
+            <button
+              onClick={() => startCamera()}
+              className="btn btn-primary"
+              id="start-webcam-primary-btn"
+            >
+              <Camera size={16} />
+              <span>Start Webcam</span>
+            </button>
           </div>
         )}
 
         {/* Live HUD Badges */}
         {(cameraActive || activeDemoGesture) && (
           <>
-            <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs">
-              <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
+            <div className="webcam-hud-top-left">
+              <span className={`status-dot ${cameraActive ? 'status-dot-active' : 'panel-indicator-cyan'}`} />
               <span className="font-semibold text-white">
                 {cameraActive ? 'LIVE WEBCAM' : 'DEMO MODE'}
               </span>
@@ -396,17 +397,17 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
               )}
             </div>
 
-            <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-mono">
-              <Eye size={14} className={detectedHands > 0 ? 'text-cyan-400' : 'text-slate-400'} />
+            <div className="webcam-hud-top-right">
+              <Eye size={13} className={detectedHands > 0 ? 'text-cyan-400' : 'text-slate-400'} />
               <span className={detectedHands > 0 ? 'text-cyan-400 font-bold' : 'text-slate-400'}>
                 {detectedHands === 0 ? '0 Hands' : detectedHands === 1 ? '1 Hand' : '2 Hands'}
               </span>
             </div>
 
-            {/* Bottom HUD: Live prediction badge */}
+            {/* Bottom HUD: Live prediction readout */}
             {predictionResult && (
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-lg">
-                <div className="flex items-center gap-3">
+              <div className="webcam-hud-bottom">
+                <div className="flex items-center gap-2">
                   <span
                     className={`badge ${
                       predictionResult.status === 'recognized'
@@ -420,12 +421,12 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
                   >
                     {predictionResult.status}
                   </span>
-                  <span className="text-xs sm:text-sm font-medium text-slate-200 truncate max-w-[200px] sm:max-w-md">
+                  <span className="text-xs font-medium text-slate-200 truncate max-w-xs">
                     {predictionResult.message}
                   </span>
                 </div>
                 {predictionResult.latency_ms > 0 && (
-                  <span className="text-xs font-mono text-slate-400 shrink-0">
+                  <span className="text-[11px] font-mono text-slate-400 shrink-0">
                     {predictionResult.latency_ms}ms
                   </span>
                 )}
@@ -437,41 +438,46 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
 
       {/* Permission / Device Error Banner */}
       {permissionError && (
-        <div className="mt-3 w-full p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center gap-3 text-sm text-rose-300">
-          <AlertCircle size={18} className="shrink-0 text-rose-400" />
+        <div className="mt-2 w-full p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center gap-2 text-xs text-rose-300">
+          <AlertCircle size={16} className="shrink-0 text-rose-400" />
           <span>{permissionError}</span>
         </div>
       )}
 
       {/* Camera Controls & Device Selector Bar */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 w-full">
+      <div className="camera-controls-bar">
         <div className="flex items-center gap-2">
           {cameraActive ? (
-            <button onClick={stopCamera} className="btn btn-danger text-xs">
-              <CameraOff size={16} />
-              Stop Camera
+            <button onClick={stopCamera} className="btn btn-danger btn-sm" id="stop-camera-btn">
+              <CameraOff size={14} />
+              <span>Stop Camera</span>
             </button>
           ) : (
-            <button onClick={() => startCamera()} className="btn btn-primary text-xs">
-              <Camera size={16} />
-              Start Camera
+            <button
+              onClick={() => startCamera()}
+              className="btn btn-primary btn-sm"
+              id="start-camera-bar-btn"
+            >
+              <Camera size={14} />
+              <span>{activeDemoGesture ? 'Switch to Camera' : 'Start Webcam'}</span>
             </button>
           )}
 
           {/* Device selector if multiple video inputs are found */}
           {availableDevices.length > 1 && (
-            <div className="flex items-center gap-1.5 bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-300">
-              <Sliders size={13} className="text-slate-400" />
+            <div className="camera-device-wrapper">
+              <Sliders size={12} className="text-slate-400 shrink-0" />
               <select
                 value={selectedDeviceId}
                 onChange={(e) => {
                   setSelectedDeviceId(e.target.value);
                   if (cameraActive) startCamera(e.target.value);
                 }}
-                className="bg-transparent border-none text-slate-200 text-xs focus:outline-none cursor-pointer"
+                className="camera-device-select"
+                aria-label="Select Camera Device"
               >
                 {availableDevices.map((dev, i) => (
-                  <option key={dev.deviceId} value={dev.deviceId} className="bg-slate-900 text-white">
+                  <option key={dev.deviceId} value={dev.deviceId}>
                     {dev.label || `Camera ${i + 1}`}
                   </option>
                 ))}
@@ -481,20 +487,16 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         </div>
 
         {/* Demo Gesture Selector Chips */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+        <div className="demo-chips-group">
+          <span className="text-[11px] text-slate-400 flex items-center gap-1 mr-1">
             <Sparkles size={12} className="text-cyan-400" />
-            <span>Try Demo Signs:</span>
+            <span>Simulate:</span>
           </span>
           {DEMO_GESTURES.map((demo) => (
             <button
               key={demo.id}
               onClick={() => handleSelectDemoGesture(demo)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all ${
-                activeDemoGesture === demo.id
-                  ? 'bg-cyan-500 text-slate-950 font-bold shadow'
-                  : 'bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyan-500/40'
-              }`}
+              className={`chip-btn ${activeDemoGesture === demo.id ? 'chip-btn-active' : ''}`}
               title={demo.description}
             >
               {demo.label} ({demo.handsCount}H)
@@ -507,10 +509,10 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
                 setDetectedHands(0);
                 onPredict([], []);
               }}
-              className="p-1 rounded-md text-slate-500 hover:text-slate-300"
+              className="p-1 rounded text-slate-400 hover:text-white"
               title="Reset demo canvas"
             >
-              <RefreshCw size={13} />
+              <RefreshCw size={12} />
             </button>
           )}
         </div>

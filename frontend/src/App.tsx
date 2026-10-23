@@ -239,86 +239,78 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#070a12] text-slate-100 selection:bg-cyan-500 selection:text-black">
+    <div className="min-h-screen flex flex-col bg-[#070a13] text-slate-100">
       {/* =========================================================================
           Top Navigation & Status Bar
           ========================================================================= */}
-      <header className="sticky top-0 z-40 bg-[#0c1220]/85 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-3">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <header className="app-header">
+        <div className="header-container">
           {/* Logo & Identity */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-              <Hand size={22} />
+          <div className="brand-section">
+            <div className="brand-icon-box">
+              <Hand size={20} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-white">SignBridge</h1>
-                <span className="badge badge-primary text-[10px]">v0.1.0 MVP</span>
+            <div className="brand-title-wrap">
+              <div className="brand-title-row">
+                <h1 className="brand-title">SignBridge</h1>
+                <span className="badge badge-primary text-[10px]">v0.1.1 MVP</span>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
+              <p className="brand-subtitle sm:block hidden">
                 Two-Way Indian Sign Language (ISL) Assistant
               </p>
             </div>
           </div>
 
-          {/* Mode Switcher */}
-          <div className="flex items-center bg-slate-900/90 p-1 rounded-xl border border-white/10 text-xs font-medium overflow-x-auto max-w-full">
+          {/* Mode Switcher Tabs */}
+          <nav className="mode-nav" aria-label="Workstation View Modes">
             <button
               onClick={() => setActiveMode('both')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeMode === 'both' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`mode-tab ${activeMode === 'both' ? 'mode-tab-active' : ''}`}
             >
               <ArrowRightLeft size={13} />
               <span>Two-Way Workstation</span>
             </button>
             <button
               onClick={() => setActiveMode('sign_to_speech')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeMode === 'sign_to_speech' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`mode-tab ${activeMode === 'sign_to_speech' ? 'mode-tab-active' : ''}`}
             >
               <Video size={13} />
               <span>Sign &rarr; Speech</span>
             </button>
             <button
               onClick={() => setActiveMode('speech_to_sign')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeMode === 'speech_to_sign' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`mode-tab ${activeMode === 'speech_to_sign' ? 'mode-tab-active' : ''}`}
             >
               <Mic size={13} />
               <span>Speech &rarr; Sign</span>
             </button>
             <button
               onClick={() => setActiveMode('timeline')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap ${
-                activeMode === 'timeline' ? 'bg-cyan-500 text-slate-950 font-bold shadow' : 'text-slate-400 hover:text-white'
-              }`}
+              className={`mode-tab ${activeMode === 'timeline' ? 'mode-tab-active' : ''}`}
             >
               <MessageSquare size={13} />
               <span>Timeline ({conversationMessages.length})</span>
             </button>
-          </div>
+          </nav>
 
           {/* Actions: Vocabulary & Connection Status */}
-          <div className="flex items-center gap-2">
+          <div className="header-actions">
             <button
               onClick={() => setIsVocabModalOpen(true)}
-              className="btn btn-secondary text-xs py-1.5 px-3"
+              className="btn btn-secondary btn-sm"
               title="View supported ISL vocabulary (Shortcut: ?)"
             >
-              <Layers size={14} />
-              <span className="hidden sm:inline">Vocabulary</span> ({vocabulary?.total_classes || 36})
+              <Layers size={13} />
+              <span className="sm:inline hidden">Vocabulary</span> ({vocabulary?.total_classes || 36})
             </button>
 
-            <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-full border border-white/10 text-xs">
+            <div className="status-pill">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  health?.status === 'healthy' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'
+                className={`status-dot ${
+                  health?.status === 'healthy' ? 'status-dot-active' : 'status-dot-offline'
                 }`}
               />
-              <span className="font-medium text-slate-300">
+              <span>
                 {health?.status === 'healthy' ? 'API Online' : 'Offline'}
               </span>
             </div>
@@ -329,31 +321,31 @@ export const App: React.FC = () => {
       {/* =========================================================================
           Scope & Ethics Notice Banner
           ========================================================================= */}
-      <div className="bg-cyan-950/20 border-b border-cyan-500/10 px-4 sm:px-6 py-2 text-xs text-cyan-300/90 text-center">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
+      <div className="scope-banner">
+        <div className="scope-banner-inner">
           <ShieldCheck size={14} className="text-cyan-400 shrink-0" />
           <span>
-            <strong>Honest Scope Statement:</strong> SignBridge MVP utilizes Random Forest classifiers for static ISL alphabet/digit fingerspelling. Alphabet recognition is not sentence-level continuous ISL grammar. Conversational phrases are demonstrated via the reviewed ISL video library.
+            <strong>Honest Scope Statement:</strong> SignBridge MVP utilizes Random Forest classifiers for static ISL alphabet/digit fingerspelling. Alphabet recognition is not sentence-level continuous ISL grammar. Conversational phrases are demonstrated via the reverse-direction reviewed video library.
           </span>
         </div>
       </div>
 
       {/* API Connection Warning with Reconnect Action */}
       {apiError && (
-        <div className="bg-rose-950/35 border-b border-rose-500/25 px-4 sm:px-6 py-2.5 text-xs text-rose-300">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+        <div className="api-error-banner">
+          <div className="api-error-inner">
             <div className="flex items-center gap-2">
               <AlertCircle size={15} className="text-rose-400 shrink-0" />
               <span>{apiError}</span>
             </div>
             <div className="flex items-center gap-2">
-              <code className="text-[11px] bg-black/40 px-2 py-0.5 rounded font-mono text-slate-300 hidden md:inline">
+              <code className="text-[11px] bg-black/40 px-2 py-0.5 rounded font-mono text-slate-300 md:inline hidden">
                 uvicorn signbridge.api.app:app --port 8000
               </code>
               <button
                 onClick={handleRetryConnection}
                 disabled={isRetrying}
-                className="btn btn-secondary text-xs py-1 px-2.5 flex items-center gap-1.5"
+                className="btn btn-secondary btn-sm"
               >
                 <RefreshCw size={12} className={isRetrying ? 'animate-spin' : ''} />
                 <span>Retry Connection</span>
@@ -366,23 +358,19 @@ export const App: React.FC = () => {
       {/* =========================================================================
           Main Workstation Content Grid
           ========================================================================= */}
-      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1 space-y-6">
+      <main className="app-main">
         {/* Dual Panel Mode */}
         {activeMode !== 'timeline' && (
-          <div
-            className={`grid gap-6 ${
-              activeMode === 'both' ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 max-w-4xl mx-auto'
-            }`}
-          >
+          <div className={activeMode === 'both' ? 'workstation-grid' : 'workstation-single'}>
             {/* =====================================================================
                 Left Panel: Sign -> Speech (Deaf Communicator)
                 ===================================================================== */}
             {(activeMode === 'both' || activeMode === 'sign_to_speech') && (
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-                    <h2 className="text-lg font-bold text-white">Sign &rarr; Text & Speech</h2>
+              <section className="panel-column">
+                <div className="panel-heading-row">
+                  <div className="panel-heading">
+                    <span className="panel-indicator-cyan" />
+                    <h2>Sign &rarr; Text & Speech</h2>
                   </div>
                   <span className="text-xs text-slate-400 font-medium">ISL Signer View</span>
                 </div>
@@ -418,11 +406,11 @@ export const App: React.FC = () => {
                 Right Panel: Speech -> Sign (Hearing Communicator)
                 ===================================================================== */}
             {(activeMode === 'both' || activeMode === 'speech_to_sign') && (
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-                    <h2 className="text-lg font-bold text-white">Speech &rarr; Verified ISL Video</h2>
+              <section className="panel-column">
+                <div className="panel-heading-row">
+                  <div className="panel-heading">
+                    <span className="panel-indicator-indigo" />
+                    <h2>Speech &rarr; Reviewed ISL Video</h2>
                   </div>
                   <span className="text-xs text-slate-400 font-medium">Hearing Peer View</span>
                 </div>
@@ -446,7 +434,7 @@ export const App: React.FC = () => {
         {/* =========================================================================
             Shared Conversation History Timeline
             ========================================================================= */}
-        <section className={activeMode === 'timeline' ? 'max-w-4xl mx-auto' : 'mt-8'}>
+        <section className={activeMode === 'timeline' ? 'workstation-single' : 'mt-4'}>
           <ConversationHistory
             messages={conversationMessages}
             onClearHistory={() => setConversationMessages([])}
@@ -459,23 +447,24 @@ export const App: React.FC = () => {
       {/* =========================================================================
           Footer
           ========================================================================= */}
-      <footer className="border-t border-white/10 bg-[#0c1220]/70 px-4 sm:px-6 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+      <footer className="app-footer">
+        <div className="footer-container">
           <div>
-            <span>SignBridge v0.1.0 MVP &bull; Preserving </span>
+            <span>SignBridge v0.1.1 MVP &bull; Preserving </span>
             <a
               href="https://github.com/nidhindaniel/sign-language-recognition-system"
               target="_blank"
               rel="noreferrer"
-              className="text-cyan-400 hover:underline inline-flex items-center gap-1"
+              className="footer-link"
             >
-              upstream ISL repository <ExternalLink size={10} />
+              <span>upstream ISL repository</span>
+              <ExternalLink size={10} />
             </a>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsVocabModalOpen(true)}
-              className="text-slate-400 hover:text-white flex items-center gap-1"
+              className="footer-link text-slate-400 hover:text-white"
             >
               <HelpCircle size={13} />
               <span>Keyboard Shortcuts (?)</span>

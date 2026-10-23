@@ -101,10 +101,10 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
   };
 
   return (
-    <div className="glass-panel p-6 flex flex-col justify-between h-full">
+    <div className="glass-panel sentence-builder-box">
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Sparkles size={16} className="text-cyan-400" />
             <h3 className="text-base font-bold text-white">Recognized Text & Speech</h3>
@@ -116,19 +116,20 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
           </div>
 
           {/* Auto-append toggle */}
-          <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer select-none">
+          <label className="auto-append-toggle">
             <input
               type="checkbox"
               checked={autoAppend}
               onChange={(e) => onToggleAutoAppend(e.target.checked)}
-              className="rounded border-slate-700 text-cyan-500 focus:ring-cyan-500/30"
+              aria-label="Auto-Append Signed Letters"
+              className="custom-checkbox"
             />
             <span>Auto-Append Signed Letters</span>
           </label>
         </div>
 
         {/* Editable Text Area */}
-        <div className="relative mb-3">
+        <div className="sentence-textarea-wrap mb-3">
           <textarea
             value={text}
             onChange={(e) => onChangeText(e.target.value)}
@@ -140,15 +141,17 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
             }}
             placeholder="Recognized ISL alphabet and digits appear here. You can also type or edit directly..."
             rows={3}
-            className="w-full bg-[#0b101d] text-slate-100 rounded-xl p-4 text-base font-medium border border-white/10 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 transition-all resize-none shadow-inner"
+            className="sentence-textarea"
+            aria-label="Sentence Text Area"
           />
 
           {/* Floating copy button */}
           {text && (
             <button
               onClick={handleCopy}
-              className="absolute top-3 right-3 p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition-colors"
+              className="floating-copy-btn"
               title="Copy text"
+              aria-label="Copy sentence text"
             >
               {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
             </button>
@@ -156,7 +159,7 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
         </div>
 
         {/* Quick words chip shortcuts */}
-        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+        <div className="quick-acronyms-row mb-2">
           <span className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold mr-1">
             Quick Insert:
           </span>
@@ -164,7 +167,7 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
             <button
               key={word}
               onClick={() => onChangeText(text ? `${text} ${word}` : word)}
-              className="px-2 py-0.5 rounded-md bg-slate-900 border border-white/5 text-[11px] font-mono text-slate-300 hover:text-white hover:border-cyan-500/30 transition-all"
+              className="acronym-btn"
             >
               +{word}
             </button>
@@ -173,37 +176,37 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
       </div>
 
       {/* Editing Action Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-white/5">
-        <div className="flex items-center gap-2">
-          <button onClick={addSpace} className="btn btn-secondary text-xs" title="Add Space">
-            <Space size={14} />
-            Space
+      <div className="sentence-actions-bar">
+        <div className="sentence-edit-group">
+          <button onClick={addSpace} className="btn btn-secondary btn-sm" title="Add Space">
+            <Space size={13} />
+            <span>Space</span>
           </button>
 
           <button
             onClick={handleBackspace}
-            className="btn btn-secondary text-xs"
+            className="btn btn-secondary btn-sm"
             title="Backspace"
             disabled={!text}
           >
-            <Delete size={14} />
-            Backspace
+            <Delete size={13} />
+            <span>Backspace</span>
           </button>
 
           <button
             onClick={onClearText}
-            className="btn btn-secondary text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+            className="btn btn-danger btn-sm"
             title="Clear All Text"
             disabled={!text}
           >
-            <Trash2 size={14} />
-            Clear
+            <Trash2 size={13} />
+            <span>Clear</span>
           </button>
 
           {onSendMessage && text.trim() && (
             <button
               onClick={handleSendToTimeline}
-              className="btn btn-primary text-xs"
+              className="btn btn-primary btn-sm"
               title="Send to conversation timeline"
             >
               <Send size={13} />
@@ -213,16 +216,14 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
         </div>
 
         {/* Text-to-Speech Controls */}
-        <div className="flex items-center gap-2">
+        <div className="sentence-tts-group">
           {/* Rate selector */}
-          <div className="flex items-center bg-slate-900 border border-white/10 rounded-lg p-0.5 text-[11px]">
+          <div className="rate-selector-group">
             {[0.8, 1.0, 1.2].map((r) => (
               <button
                 key={r}
                 onClick={() => setSpeechRate(r)}
-                className={`px-1.5 py-0.5 rounded ${
-                  speechRate === r ? 'bg-cyan-500/20 text-cyan-400 font-bold' : 'text-slate-400'
-                }`}
+                className={`rate-btn ${speechRate === r ? 'rate-btn-active' : ''}`}
                 title={`Speech rate ${r}x`}
               >
                 {r}x
@@ -234,7 +235,8 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
             <select
               value={selectedVoice}
               onChange={(e) => setSelectedVoice(e.target.value)}
-              className="bg-slate-900 border border-white/10 text-slate-300 text-xs rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-cyan-500"
+              className="voice-select"
+              aria-label="Select TTS Voice"
             >
               {voices.slice(0, 10).map((v) => (
                 <option key={v.name} value={v.name}>
@@ -247,19 +249,19 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
           {isSpeaking ? (
             <button
               onClick={stopSpeaking}
-              className="btn btn-danger text-xs animate-pulse"
+              className="btn btn-danger btn-sm"
             >
-              <VolumeX size={15} />
-              Stop
+              <VolumeX size={14} />
+              <span>Stop</span>
             </button>
           ) : (
             <button
               onClick={speakText}
               disabled={!text.trim()}
-              className="btn btn-primary text-xs"
+              className="btn btn-primary btn-sm"
             >
-              <Volume2 size={15} />
-              Speak Aloud
+              <Volume2 size={14} />
+              <span>Speak Aloud</span>
             </button>
           )}
         </div>
@@ -267,3 +269,5 @@ export const SentenceBuilder: React.FC<SentenceBuilderProps> = ({
     </div>
   );
 };
+
+export default SentenceBuilder;

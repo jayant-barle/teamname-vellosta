@@ -32,7 +32,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
   const isNoDetection = status === 'no_detection';
 
   return (
-    <div className="glass-panel p-6 flex flex-col justify-between min-h-[220px] relative overflow-hidden">
+    <div className="glass-panel prediction-box">
       {/* Background Accent Glow */}
       <div
         className={`absolute -right-10 -bottom-10 w-36 h-36 rounded-full blur-3xl pointer-events-none transition-all duration-500 ${
@@ -45,7 +45,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
       />
 
       {/* Card Header: Badges */}
-      <div className="flex items-center justify-between gap-2 mb-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <span
             className={`badge ${
@@ -88,7 +88,7 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         <div className="flex items-baseline gap-4">
           {label ? (
             <div
-              className={`text-6xl font-extrabold tracking-tight font-mono transition-transform duration-200 ${
+              className={`prediction-char-display ${
                 isRecognized ? 'text-emerald-400' : 'text-amber-400 opacity-90'
               }`}
             >
@@ -114,21 +114,21 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
         {label && (
           <button
             onClick={() => onAppendChar(label)}
-            className="btn btn-secondary text-xs hover:border-cyan-500/50"
+            className="btn btn-secondary btn-sm"
             title="Append recognized letter to sentence builder"
           >
-            <Plus size={14} />
-            Append '{label}'
+            <Plus size={13} />
+            <span>Append '{label}'</span>
           </button>
         )}
       </div>
 
       {/* Confidence Meter or Uncertainty Notice */}
-      <div className="mt-4 pt-3 border-t border-white/5">
+      <div className="mt-3 pt-2.5 border-t border-white/5">
         {confidencePercent !== null ? (
           <div>
-            <div className="flex items-center justify-between text-xs mb-1.5 font-mono">
-              <span className="text-slate-400">Model Probability</span>
+            <div className="flex items-center justify-between text-xs mb-1 font-mono">
+              <span className="text-slate-400">Estimated Confidence</span>
               <span
                 className={`font-semibold ${
                   confidencePercent >= confidenceThreshold * 100
@@ -139,20 +139,20 @@ export const PredictionCard: React.FC<PredictionCardProps> = ({
                 {confidencePercent}%
               </span>
             </div>
-            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden p-0.5">
+            <div className="confidence-track">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${
-                  confidencePercent >= confidenceThreshold * 100
-                    ? 'bg-gradient-to-r from-teal-500 to-emerald-400'
-                    : 'bg-gradient-to-r from-amber-500 to-orange-400'
-                }`}
-                style={{ width: `${Math.min(100, Math.max(5, confidencePercent))}%` }}
+                className="confidence-fill"
+                style={{
+                  width: `${Math.min(100, Math.max(5, confidencePercent))}%`,
+                  backgroundColor:
+                    confidencePercent >= confidenceThreshold * 100 ? '#10b981' : '#f59e0b',
+                }}
               />
             </div>
             {isUncertain && (
               <p className="text-[11px] text-amber-300/80 mt-1.5 flex items-center gap-1">
                 <AlertTriangle size={11} />
-                Below confidence threshold ({Math.round(confidenceThreshold * 100)}%). Rejected to prevent false output.
+                <span>Below confidence threshold ({Math.round(confidenceThreshold * 100)}%). Rejected to prevent false output.</span>
               </p>
             )}
           </div>
