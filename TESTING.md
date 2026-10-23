@@ -118,3 +118,48 @@ A live FastAPI instance was spawned using `uvicorn signbridge.api.app:app --host
 - **Outcome:** The engine strictly classified the state as `uncertain`, flagged the low confidence, and prevented automatic message confirmation.
 - **Test:** Input vector of invalid dimension (33 features).
 - **Outcome:** Engine rejected with status `error` and explicit dimension guidance, preventing silent model corruption.
+
+---
+
+## 7. Frontend Lint & Code Quality Verification
+
+### Command: `npm run lint` (in `frontend/`)
+**Tool:** `oxlint` (116 rules across 11 files)  
+**Exit Code:** `0`
+```
+> frontend@0.0.0 lint
+> oxlint
+
+Found 0 warnings and 0 errors.
+Finished in 18ms on 11 files with 116 rules using 12 threads.
+```
+
+### Production Build: `npm run build`
+**Tool:** Vite + TypeScript Compiler  
+**Exit Code:** `0`
+```
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+vite v8.3.5 building client environment for production...
+transforming...
+✓ 1943 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                          1.52 kB │ gzip:  0.79 kB
+dist/assets/index-BBari2Jb.css           4.24 kB │ gzip:  1.50 kB
+dist/assets/vision_bundle-DBeNwk6R.js  153.82 kB │ gzip: 45.42 kB
+dist/assets/index-rf6KrkUy.js          284.59 kB │ gzip: 87.10 kB
+
+✓ built in 689ms
+```
+
+---
+
+## 8. Interactive Features Verification
+
+- [x] **Live Two-Way Timeline:** Signer messages and Peer spoken messages display with sender badges, timestamps, audio replay, and transcript download.
+- [x] **Camera Device Selector:** Enumerates video inputs and allows switching without page refresh.
+- [x] **Interactive Demo Signs:** 5 pre-calibrated sample landmark vectors (`C`, `L`, `A`, `B`, `Uncertain`) tested and validated without camera hardware.
+- [x] **Phrase Category & Search:** Real-time filtering across 10 certified ISL demonstration clips.
+- [x] **Keyboard Shortcuts:** `?` opens Vocabulary modal; `Escape` closes it.

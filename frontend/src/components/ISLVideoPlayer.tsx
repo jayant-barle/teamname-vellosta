@@ -179,28 +179,42 @@ export const ISLVideoPlayer: React.FC<ISLVideoPlayerProps> = ({ phrase, customWo
         /* Fingerspelling Breakdown View */
         <div className="flex flex-col h-full justify-between">
           <div>
-            <div className="text-xs text-slate-400 mb-3 flex items-center gap-1.5">
-              <Layers size={14} className="text-cyan-400" />
-              <span>
-                Fingerspelling word: <strong className="text-white font-mono">{customWord}</strong>
+            <div className="flex items-center justify-between text-xs text-slate-400 mb-3">
+              <span className="flex items-center gap-1.5">
+                <Layers size={14} className="text-cyan-400" />
+                <span>
+                  Fingerspelling word: <strong className="text-white font-mono">{customWord}</strong>
+                </span>
+              </span>
+              <span className="text-[11px] text-slate-500 font-mono">
+                {lettersToSpell.length} {lettersToSpell.length === 1 ? 'letter' : 'letters'}
               </span>
             </div>
 
             <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-[220px] overflow-y-auto pr-1">
-              {lettersToSpell.map((char, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-lg bg-slate-900 border border-white/10 flex flex-col items-center justify-center shadow"
-                >
-                  <span className="text-2xl font-bold font-mono text-cyan-400">{char}</span>
-                  <span className="text-[10px] text-slate-500 uppercase mt-1">ISL Sign</span>
-                </div>
-              ))}
+              {lettersToSpell.map((char, idx) => {
+                const isOneHand = ['C', 'I', 'L', 'O', 'U', 'V', 'W', '1', '2', '3', '4', '5'].includes(char);
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl bg-slate-900 border border-white/10 flex flex-col items-center justify-center shadow-md hover:border-cyan-500/40 transition-all"
+                  >
+                    <span className="text-2xl font-bold font-mono text-cyan-400">{char}</span>
+                    <span
+                      className={`text-[9px] uppercase tracking-wider font-semibold mt-1 px-1.5 py-0.5 rounded ${
+                        isOneHand ? 'bg-cyan-950/60 text-cyan-300' : 'bg-indigo-950/60 text-indigo-300'
+                      }`}
+                    >
+                      {isOneHand ? '1-Hand' : '2-Hands'}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-300 mt-4">
-            In Indian Sign Language, proper nouns and uncommon words are fingerspelled using standard single and two-handed ISL alphabets.
+          <div className="p-3.5 rounded-xl bg-cyan-950/20 border border-cyan-500/20 text-xs text-cyan-300 mt-4 leading-relaxed">
+            In Indian Sign Language, uncommon words, acronyms, and names are fingerspelled using standard single and two-handed alphabets.
           </div>
         </div>
       )}

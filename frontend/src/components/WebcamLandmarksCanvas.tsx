@@ -1,7 +1,18 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Camera, CameraOff, AlertCircle, Eye } from 'lucide-react';
-import { extractFeaturesFromLandmarks } from '../services/apiClient';
-import type { LandmarkPoint, PredictResponse } from '../services/apiClient';
+import {
+  Camera,
+  CameraOff,
+  AlertCircle,
+  Eye,
+  Sliders,
+  Sparkles,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  extractFeaturesFromLandmarks,
+  DEMO_GESTURES,
+} from '../services/apiClient';
+import type { LandmarkPoint, PredictResponse, DemoGesture } from '../services/apiClient';
 
 interface WebcamLandmarksCanvasProps {
   onPredict: (features: number[], landmarks: LandmarkPoint[][]) => Promise<PredictResponse | null>;
@@ -22,7 +33,7 @@ const HAND_CONNECTIONS: [number, number][] = [
   // Pinky
   [0, 17], [17, 18], [18, 19], [19, 20],
   // Palm Base
-  [5, 9], [9, 13], [13, 17]
+  [5, 9], [9, 13], [13, 17],
 ];
 
 export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
@@ -37,12 +48,35 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [detectedHands, setDetectedHands] = useState<number>(0);
   const [fps, setFps] = useState<number>(0);
+  const [availableDevices, setAvailableDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [activeDemoGesture, setActiveDemoGesture] = useState<string | null>(null);
 
   const landmarkerRef = useRef<any>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastInferenceTimeRef = useRef<number>(0);
   const frameCountRef = useRef<number>(0);
-  const lastFpsTimeRef = useRef<number>(performance.now());
+  const lastFpsTimeRef = useRef<number>(0);
+  const processFrameRef = useRef<() => void>(() => {});
+
+  // Enumerate camera devices
+  useEffect(() => {
+    async function loadDevices() {
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices?.enumerateDevices) {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+          setAvailableDevices(videoInputs);
+          if (videoInputs.length > 0 && !selectedDeviceId) {
+            setSelectedDeviceId(videoInputs[0].deviceId);
+          }
+        } catch {
+          // Device enumeration fallback
+        }
+      }
+    }
+    loadDevices();
+  }, [selectedDeviceId]);
 
   // Initialize MediaPipe HandLandmarker with graceful fallback
   useEffect(() => {
@@ -77,23 +111,38 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     return () => {
       isMounted = false;
       if (landmarkerRef.current) {
-        try { landmarkerRef.current.close(); } catch (_) {}
+        try {
+          landmarkerRef.current.close();
+        } catch {
+          // Ignore closure errors
+        }
       }
     };
   }, []);
 
   // Start Camera
-  const startCamera = async () => {
+  const startCamera = async (deviceId?: string) => {
     setPermissionError(null);
+    setActiveDemoGesture(null);
+
+    // Stop current stream if switching devices
+    if (videoRef.current?.srcObject) {
+      const currentStream = videoRef.current.srcObject as MediaStream;
+      currentStream.getTracks().forEach((t) => t.stop());
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints: MediaStreamConstraints = {
         video: {
+          deviceId: deviceId || selectedDeviceId ? { exact: deviceId || selectedDeviceId } : undefined,
           width: { ideal: 640 },
           height: { ideal: 480 },
-          facingMode: 'user',
+          facingMode: !deviceId && !selectedDeviceId ? 'user' : undefined,
         },
         audio: false,
-      });
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -105,7 +154,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     } catch (err: any) {
       console.error('Camera permission error:', err);
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setPermissionError('Camera access denied. Please grant permission in your browser.');
+        setPermissionError('Camera access denied. Please grant camera permission in your browser.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
         setPermissionError('No camera detected on this system.');
       } else {
@@ -117,7 +166,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
 
   // Stop Camera
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
+    if (videoRef.current?.srcObject) {
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach((track) => track.stop());
       videoRef.current.srcObject = null;
@@ -183,7 +232,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     const video = videoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.readyState < 2) {
-      animationFrameRef.current = requestAnimationFrame(processFrame);
+      animationFrameRef.current = requestAnimationFrame(() => processFrameRef.current());
       return;
     }
 
@@ -202,10 +251,12 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.restore();
 
-    // FPS calculation
+    // FPS calculation using animation frame timestamp
     frameCountRef.current++;
-    const now = performance.now();
-    if (now - lastFpsTimeRef.current >= 1000) {
+    const now = typeof document !== 'undefined' ? (document.timeline?.currentTime as number || 0) : 0;
+    if (lastFpsTimeRef.current === 0) {
+      lastFpsTimeRef.current = now;
+    } else if (now - lastFpsTimeRef.current >= 1000) {
       setFps(Math.round((frameCountRef.current * 1000) / (now - lastFpsTimeRef.current)));
       frameCountRef.current = 0;
       lastFpsTimeRef.current = now;
@@ -217,7 +268,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
     if (landmarkerRef.current) {
       try {
         const results = landmarkerRef.current.detectForVideo(video, now);
-        if (results && results.landmarks && results.landmarks.length > 0) {
+        if (results?.landmarks && results.landmarks.length > 0) {
           // Flip landmark X to match mirrored canvas view
           extractedHands = results.landmarks.map((hand: any[]) =>
             hand.map((p) => ({
@@ -227,7 +278,7 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
             }))
           );
         }
-      } catch (e) {
+      } catch {
         // Fallback gracefully
       }
     }
@@ -246,83 +297,115 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
         const features = extractFeaturesFromLandmarks(extractedHands);
         onPredict(features, extractedHands);
       } else {
-        // Send empty prediction to update no_detection state
         onPredict([], []);
       }
     }
 
-    animationFrameRef.current = requestAnimationFrame(processFrame);
+    animationFrameRef.current = requestAnimationFrame(() => processFrameRef.current());
   }, [onPredict, isPredicting]);
 
   useEffect(() => {
+    processFrameRef.current = processFrame;
+  }, [processFrame]);
+
+  useEffect(() => {
     if (cameraActive) {
-      animationFrameRef.current = requestAnimationFrame(processFrame);
+      animationFrameRef.current = requestAnimationFrame(() => processFrameRef.current());
     }
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [cameraActive, processFrame]);
+  }, [cameraActive]);
+
+  // Demo gesture preview handler (works offline and camera-less)
+  const handleSelectDemoGesture = (gesture: DemoGesture) => {
+    stopCamera();
+    setActiveDemoGesture(gesture.id);
+
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = 640;
+      canvas.height = 480;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Render dark stage background
+        ctx.fillStyle = '#080d19';
+        ctx.fillRect(0, 0, 640, 480);
+
+        // Watermark text
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.font = '600 16px Outfit, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`DEMO GESTURE MODE: ${gesture.name}`, 320, 40);
+
+        // Draw landmarks
+        drawLandmarks(ctx, gesture.landmarks, 640, 480);
+      }
+    }
+
+    setDetectedHands(gesture.handsCount);
+    const features = extractFeaturesFromLandmarks(gesture.landmarks);
+    onPredict(features, gesture.landmarks);
+  };
 
   return (
-    <div className="relative flex flex-col items-center">
+    <div className="relative flex flex-col items-center w-full">
       {/* Video & Canvas Container */}
-      <div className="relative w-full aspect-video bg-[#0c1220] rounded-xl overflow-hidden border border-white/10 shadow-lg">
+      <div className="relative w-full aspect-video bg-[#0c1220] rounded-2xl overflow-hidden border border-white/10 shadow-xl">
         {/* Hidden video element used as feed source */}
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          className="hidden"
-        />
+        <video ref={videoRef} playsInline muted className="hidden" />
 
         {/* Mirrored Canvas with Landmark Overlays */}
-        <canvas
-          ref={canvasRef}
-          className="w-full h-full object-cover"
-        />
+        <canvas ref={canvasRef} className="w-full h-full object-cover" />
 
         {/* Inactive State Screen */}
-        {!cameraActive && (
+        {!cameraActive && !activeDemoGesture && (
           <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/60 backdrop-blur-sm">
-            <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-cyan-400">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-4 text-cyan-400 shadow-lg shadow-cyan-500/10">
               <Camera size={32} />
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">Camera is Off</h3>
+            <h3 className="text-lg font-bold text-white mb-2">Webcam Recognition</h3>
             <p className="text-sm text-slate-400 max-w-sm mb-6">
-              Start your webcam to begin real-time Indian Sign Language recognition. Your video is processed entirely locally.
+              Start your webcam for real-time ISL recognition, or test demo gesture samples below without a camera.
             </p>
-            <button
-              onClick={startCamera}
-              className="btn btn-primary"
-            >
-              <Camera size={18} />
-              Start Webcam
-            </button>
+
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button onClick={() => startCamera()} className="btn btn-primary">
+                <Camera size={18} />
+                Start Webcam
+              </button>
+            </div>
           </div>
         )}
 
         {/* Live HUD Badges */}
-        {cameraActive && (
+        {(cameraActive || activeDemoGesture) && (
           <>
-            <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs">
-              <span className="live-dot" />
-              <span className="font-semibold text-emerald-400">LIVE FEED</span>
-              <span className="text-slate-500">|</span>
-              <span className="text-slate-300 font-mono">{fps} FPS</span>
+            <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs">
+              <span className={`w-2 h-2 rounded-full ${cameraActive ? 'bg-emerald-400 animate-pulse' : 'bg-cyan-400'}`} />
+              <span className="font-semibold text-white">
+                {cameraActive ? 'LIVE WEBCAM' : 'DEMO MODE'}
+              </span>
+              {cameraActive && (
+                <>
+                  <span className="text-slate-500">|</span>
+                  <span className="text-slate-300 font-mono">{fps} FPS</span>
+                </>
+              )}
             </div>
 
-            <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-xs font-mono">
-              <Eye size={14} className={detectedHands > 0 ? "text-cyan-400" : "text-slate-400"} />
-              <span className={detectedHands > 0 ? "text-cyan-400 font-bold" : "text-slate-400"}>
-                {detectedHands === 0 ? "0 Hands" : detectedHands === 1 ? "1 Hand" : "2 Hands"}
+            <div className="absolute top-3 right-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 text-xs font-mono">
+              <Eye size={14} className={detectedHands > 0 ? 'text-cyan-400' : 'text-slate-400'} />
+              <span className={detectedHands > 0 ? 'text-cyan-400 font-bold' : 'text-slate-400'}>
+                {detectedHands === 0 ? '0 Hands' : detectedHands === 1 ? '1 Hand' : '2 Hands'}
               </span>
             </div>
 
             {/* Bottom HUD: Live prediction badge */}
             {predictionResult && (
-              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/70 backdrop-blur-md px-4 py-2 rounded-lg border border-white/10">
+              <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between bg-black/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-lg">
                 <div className="flex items-center gap-3">
                   <span
                     className={`badge ${
@@ -337,12 +420,12 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
                   >
                     {predictionResult.status}
                   </span>
-                  <span className="text-sm font-medium text-slate-200">
+                  <span className="text-xs sm:text-sm font-medium text-slate-200 truncate max-w-[200px] sm:max-w-md">
                     {predictionResult.message}
                   </span>
                 </div>
                 {predictionResult.latency_ms > 0 && (
-                  <span className="text-xs font-mono text-slate-400">
+                  <span className="text-xs font-mono text-slate-400 shrink-0">
                     {predictionResult.latency_ms}ms
                   </span>
                 )}
@@ -354,24 +437,84 @@ export const WebcamLandmarksCanvas: React.FC<WebcamLandmarksCanvasProps> = ({
 
       {/* Permission / Device Error Banner */}
       {permissionError && (
-        <div className="mt-3 w-full p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center gap-3 text-sm text-rose-300">
+        <div className="mt-3 w-full p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center gap-3 text-sm text-rose-300">
           <AlertCircle size={18} className="shrink-0 text-rose-400" />
           <span>{permissionError}</span>
         </div>
       )}
 
-      {/* Camera Controls Bar */}
-      {cameraActive && (
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            onClick={stopCamera}
-            className="btn btn-danger"
-          >
-            <CameraOff size={16} />
-            Stop Camera
-          </button>
+      {/* Camera Controls & Device Selector Bar */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 w-full">
+        <div className="flex items-center gap-2">
+          {cameraActive ? (
+            <button onClick={stopCamera} className="btn btn-danger text-xs">
+              <CameraOff size={16} />
+              Stop Camera
+            </button>
+          ) : (
+            <button onClick={() => startCamera()} className="btn btn-primary text-xs">
+              <Camera size={16} />
+              Start Camera
+            </button>
+          )}
+
+          {/* Device selector if multiple video inputs are found */}
+          {availableDevices.length > 1 && (
+            <div className="flex items-center gap-1.5 bg-slate-900 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-slate-300">
+              <Sliders size={13} className="text-slate-400" />
+              <select
+                value={selectedDeviceId}
+                onChange={(e) => {
+                  setSelectedDeviceId(e.target.value);
+                  if (cameraActive) startCamera(e.target.value);
+                }}
+                className="bg-transparent border-none text-slate-200 text-xs focus:outline-none cursor-pointer"
+              >
+                {availableDevices.map((dev, i) => (
+                  <option key={dev.deviceId} value={dev.deviceId} className="bg-slate-900 text-white">
+                    {dev.label || `Camera ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
-      )}
+
+        {/* Demo Gesture Selector Chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] text-slate-400 flex items-center gap-1">
+            <Sparkles size={12} className="text-cyan-400" />
+            <span>Try Demo Signs:</span>
+          </span>
+          {DEMO_GESTURES.map((demo) => (
+            <button
+              key={demo.id}
+              onClick={() => handleSelectDemoGesture(demo)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all ${
+                activeDemoGesture === demo.id
+                  ? 'bg-cyan-500 text-slate-950 font-bold shadow'
+                  : 'bg-slate-900 border border-white/10 text-slate-300 hover:text-white hover:border-cyan-500/40'
+              }`}
+              title={demo.description}
+            >
+              {demo.label} ({demo.handsCount}H)
+            </button>
+          ))}
+          {activeDemoGesture && (
+            <button
+              onClick={() => {
+                setActiveDemoGesture(null);
+                setDetectedHands(0);
+                onPredict([], []);
+              }}
+              className="p-1 rounded-md text-slate-500 hover:text-slate-300"
+              title="Reset demo canvas"
+            >
+              <RefreshCw size={13} />
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

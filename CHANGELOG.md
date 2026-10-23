@@ -4,6 +4,34 @@ All notable changes to the SignBridge project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-10-23
+
+### Added
+- **Synchronized Two-Way Conversation Timeline (`ConversationHistory.tsx`):**
+  - Real-time logging of messages from both Deaf Communicator (ISL) and Hearing Peer (Voice).
+  - One-click "Replay Audio (TTS)" and "Watch ISL Sign Clip" buttons per message.
+  - One-click copy transcript and export transcript as timestamped text file.
+- **Camera Device Switcher & Interactive Demo Mode (`WebcamLandmarksCanvas.tsx`):**
+  - Enumeration and dynamic switching between available camera video inputs.
+  - Interactive "Demo Gestures" selector (`C`, `L`, `A`, `B`, and `Uncertain Sign`) enabling end-to-end testing of real prediction, confidence gauges, and rejection policies without requiring a physical camera device.
+- **ISL Phrase Search & Category Filtering (`SpeechToSignPanel.tsx`):**
+  - Instant search filtering and category tabs (*All, Greetings, Courtesy, Assistance, Responses, Questions*).
+  - "Send to Timeline" action syncing spoken phrases into the two-way session log.
+- **Enhanced Fingerspelling Visual Breakdown (`ISLVideoPlayer.tsx`):**
+  - Classified 1-hand vs 2-hands indicators on every alphabet card.
+  - Instant custom word fingerspelling decomposition for names and proper nouns.
+- **Keyboard Accessibility Navigation:**
+  - `?` shortcut opens the Vocabulary reference modal.
+  - `Escape` dismisses modals.
+  - Keyboard-focusable controls with visible focus rings.
+- **Reduced Motion Support:**
+  - Added `@media (prefers-reduced-motion: reduce)` in `App.css` to respect user accessibility preferences.
+
+### Fixed
+- Resolved all 7 oxlint warnings across the frontend codebase (pure animation timestamps, named callbacks, clean effect dependencies); linter runs with **0 errors and 0 warnings**.
+- Fixed synchronous state update warnings during initial API polling.
+- Replaced unused Vite starter template rules in `App.css` with responsive utilities and mobile spacing.
+
 ## [0.1.0] - 2026-10-23
 
 ### Added
